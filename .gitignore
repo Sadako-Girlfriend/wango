@@ -1,0 +1,36 @@
+# 依赖与构建产物
+node_modules/
+dist/
+dist-ssr/
+src-tauri/target/
+src-tauri/gen/
+*.local
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# 编辑器 / 本机工具
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.cursor/
+
+# 密钥
+.env
+.env.*
+
+# 本地保留、不上传（文档与素材）
+设计书.md
+实现清单.md
+代码结构表.md
+需求-多项目会话.md
+版本记录.md
+示意图.jpg
+万构使用指南.wango
+logo_1.jpg
+logo_2.jpg
+logo_2.ico
+# 内部文稿（docs/screenshots 等公开素材要上传）
+docs/万构论.md
+docs/场景与定位.md
+新建文件夹/

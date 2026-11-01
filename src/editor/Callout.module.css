@@ -1,0 +1,81 @@
+:global([data-wg-export]) .remove {
+  display: none !important;
+}
+
+.callout {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 12px 0;
+  padding: 12px 36px 12px 14px;
+  border-radius: var(--wg-radius-md);
+  background: #fff8e6;
+  border: 1px solid #f3e2b3;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.icon {
+  flex-shrink: 0;
+  /* 直径 = 首行行高，换行后仍贴齐「备注」那一行 */
+  width: 1.65em;
+  height: 1.65em;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #c9941a;
+  background: #ffe9a8;
+}
+
+.icon svg {
+  width: 0.95em;
+  height: 0.95em;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--wg-text);
+}
+
+.body :global(p) {
+  margin: 0;
+}
+
+.body :global(p + p) {
+  margin-top: 0.45em;
+}
+
+.body :global(strong:first-child) {
+  color: #8a6a12;
+}
+
+.remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--wg-text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0;
+}
+
+.callout:hover .remove,
+.callout:focus-within .remove {
+  opacity: 1;
+}
+
+.remove:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--wg-danger);
+}

@@ -1,0 +1,131 @@
+.root {
+  width: 794px;
+  box-sizing: border-box;
+  padding: 40px 48px 56px;
+  background: #ffffff;
+  color: var(--wg-text);
+  font-family: var(--wg-font);
+}
+
+.cover {
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--wg-border);
+}
+
+.title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--wg-text);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  margin-top: 36px;
+  padding-top: 16px;
+}
+
+.brandMark {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  opacity: 0.88;
+  user-select: none;
+  pointer-events: none;
+}
+
+.content :global(.tiptap) {
+  outline: none;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--wg-text);
+}
+
+.content :global(.tiptap mark) {
+  border-radius: 2px;
+  padding: 0 1px;
+  color: inherit;
+}
+
+.content :global(.tiptap > * + *) {
+  margin-top: 0.65em;
+}
+
+.content :global(.tiptap h1) {
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 1.1em 0 0.35em;
+  page-break-after: avoid;
+}
+
+.content :global(.tiptap h2) {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0.95em 0 0.3em;
+}
+
+.content :global(.tiptap h3),
+.content :global(.tiptap h4),
+.content :global(.tiptap h5),
+.content :global(.tiptap h6) {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0.85em 0 0.28em;
+}
+
+.content :global(.tiptap > pre) {
+  background: #1e1f26;
+  color: #abb2bf;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: var(--wg-font-mono);
+  font-size: 13px;
+  overflow: visible;
+  border: 1px solid #2a2b33;
+}
+
+.content :global(.react-renderer.node-codeBlock) {
+  width: 100%;
+  margin: 0;
+}
+
+.content :global(.tiptap ul),
+.content :global(.tiptap ol) {
+  padding-left: 1.4rem;
+  margin: 0.4em 0;
+}
+
+.content :global(.tiptap li + li) {
+  margin-top: 0.25em;
+}
+
+.content :global(.tiptap a.wg-link),
+.content :global(.tiptap a) {
+  color: var(--wg-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.content :global(.react-renderer.node-image) {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.content :global(.react-renderer.node-callout) {
+  width: 100%;
+  margin: 0;
+}
+
+.content :global(img) {
+  max-width: 100%;
+  height: auto;
+}

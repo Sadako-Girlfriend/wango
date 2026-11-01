@@ -1,0 +1,152 @@
+.root {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 22px 28px 16px;
+}
+
+/* 切换节点：轻微上移淡入，不重挂载编辑器 */
+.root[data-enter] {
+  animation: wgPaneEnter var(--wg-motion-enter) var(--wg-ease-out) both;
+}
+
+@keyframes wgPaneEnter {
+  from {
+    opacity: 0.4;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-enter],
+  .empty[data-enter] {
+    animation: none;
+  }
+}
+
+.root[data-drop] {
+  outline: 2px dashed var(--wg-accent);
+  outline-offset: -8px;
+}
+
+.dropMask {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(247, 248, 250, 0.82);
+  color: var(--wg-accent);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+  border-radius: var(--wg-radius-md);
+}
+
+/* 示意图式主标题：编号 + 可点文字 + 魔法棒（整行空白不可编辑） */
+.titleBlock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  min-width: 0;
+}
+
+.number {
+  flex-shrink: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--wg-text);
+  line-height: 1.25;
+}
+
+.titleText {
+  flex: 0 1 auto;
+  max-width: calc(100% - 48px);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--wg-text);
+  line-height: 1.25;
+  text-align: left;
+  cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titleText:hover {
+  color: var(--wg-accent);
+}
+
+.titleInput {
+  flex: 0 1 auto;
+  min-width: 4ch;
+  max-width: calc(100% - 48px);
+  width: auto;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--wg-text);
+  padding: 0;
+  line-height: 1.25;
+  field-sizing: content;
+}
+
+.wandBtn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  border: 1px solid transparent;
+  border-radius: var(--wg-radius-sm);
+  background: transparent;
+  color: var(--wg-text-secondary);
+  cursor: pointer;
+}
+
+.wandBtn:hover:not(:disabled) {
+  color: var(--wg-accent);
+  background: var(--wg-accent-soft);
+  border-color: transparent;
+}
+
+.wandBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.editorArea {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.empty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--wg-text-muted);
+}
+
+.empty[data-enter] {
+  animation: wgPaneEnter var(--wg-motion-enter) var(--wg-ease-out) both;
+}

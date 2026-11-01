@@ -1,0 +1,296 @@
+.header {
+  height: var(--wg-header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--wg-bg-elevated);
+  border-bottom: 1px solid var(--wg-border-subtle);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.projectName {
+  width: min(200px, 28vw);
+  height: 32px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  padding: 0 10px;
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font-weight: 600;
+  outline: none;
+}
+
+.projectName:focus {
+  border-color: var(--wg-accent);
+  box-shadow: 0 0 0 3px var(--wg-accent-soft);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn,
+.menuWrap {
+  position: relative;
+}
+
+.btn,
+.btnPrimary {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--wg-radius-sm);
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg-elevated);
+  color: var(--wg-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.caret {
+  font-size: 10px;
+  opacity: 0.65;
+  line-height: 1;
+}
+
+.btn:hover {
+  background: var(--wg-bg-muted);
+}
+
+.btnPrimary {
+  border-color: var(--wg-accent);
+  background: var(--wg-accent);
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  filter: brightness(0.96);
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 180px;
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow);
+  padding: 6px;
+  z-index: 20;
+}
+
+.menuScroll {
+  min-width: 220px;
+  max-width: min(320px, 70vw);
+  max-height: min(360px, calc(100vh - var(--wg-header-h) - 24px));
+  overflow-y: auto;
+}
+
+.menu > button {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  color: var(--wg-text);
+}
+
+.menu > button:hover {
+  background: var(--wg-bg-muted);
+}
+
+.menu > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.menuRow {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  border-radius: var(--wg-radius-sm);
+}
+
+.menuRow:hover {
+  background: var(--wg-bg-muted);
+}
+
+.menuRowOpen {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  color: var(--wg-text);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuRowDel {
+  flex-shrink: 0;
+  width: 28px;
+  border: none;
+  background: transparent;
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  color: var(--wg-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0;
+}
+
+.menuRow:hover .menuRowDel,
+.menuRowDel:focus-visible {
+  opacity: 1;
+}
+
+.menuRowDel:hover {
+  color: var(--wg-danger);
+  background: #fef2f2;
+}
+
+.inspireIcon {
+  font-size: 14px;
+  line-height: 1;
+  color: #c9941a;
+  display: none; /* 生成中不占位，避免「生成中/取消」视觉偏一侧 */
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.inspireIcon[data-visible] {
+  display: inline-flex;
+}
+
+.inspireLabelStack {
+  display: inline-grid;
+  justify-items: center;
+  align-items: center;
+  min-width: 3.5em;
+  line-height: 1;
+  height: 18px;
+}
+
+.inspireLabelStack > span {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.inspireLabelOn {
+  visibility: visible;
+}
+
+.inspireLabelOff {
+  visibility: hidden;
+}
+
+.inspireBreath {
+  border-color: color-mix(in srgb, var(--wg-accent) 55%, var(--wg-border));
+  color: var(--wg-accent);
+  animation: inspirePulse 1.6s ease-in-out infinite;
+}
+
+.inspireCancelling {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+@keyframes inspirePulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--wg-accent) 35%, transparent);
+  }
+  50% {
+    opacity: 0.72;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--wg-accent) 12%, transparent);
+  }
+}
+
+.inspireMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  width: min(300px, calc(100vw - 24px));
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow);
+  padding: 6px;
+  z-index: 25;
+}
+
+.inspireItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 10px;
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  color: var(--wg-text);
+}
+
+.inspireItem:hover:not(:disabled) {
+  background: var(--wg-bg-muted);
+}
+
+.inspireItem:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.inspireItemTitle {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.inspireItemDesc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--wg-text-muted);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.saveErr {
+  font-size: 12px;
+  color: var(--wg-danger);
+  white-space: nowrap;
+}

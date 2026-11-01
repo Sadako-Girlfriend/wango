@@ -1,0 +1,88 @@
+/**
+ * 设计 token：对齐示意图中间两栏的白灰极简风。
+ * 业务组件禁止写魔法色值，统一引用这些变量。
+ */
+
+:root {
+  --wg-bg: #f7f8fa;
+  --wg-bg-elevated: #ffffff;
+  --wg-bg-muted: #f0f2f5;
+  --wg-bg-selected: #e8f3ff;
+  --wg-border: #e5e7eb;
+  --wg-border-subtle: #eef0f3;
+  --wg-text: #1f2937;
+  --wg-text-secondary: #6b7280;
+  --wg-text-muted: #9ca3af;
+  --wg-accent: #2f6fed;
+  --wg-accent-soft: #ebf2ff;
+  --wg-danger: #dc2626;
+  --wg-radius-sm: 6px;
+  --wg-radius-md: 10px;
+  --wg-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.04);
+  --wg-font: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --wg-font-mono: "Cascadia Code", "SF Mono", Consolas, monospace;
+  --wg-header-h: 52px;
+  --wg-tree-width: 30%;
+  /* 微交互：短、克制；业务动画统一引用 */
+  --wg-motion-fast: 160ms;
+  --wg-motion-enter: 280ms;
+  --wg-motion-node: 340ms;
+  --wg-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --wg-ease-spring: cubic-bezier(0.22, 1.35, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --wg-motion-fast: 1ms;
+    --wg-motion-enter: 1ms;
+    --wg-motion-node: 1ms;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--wg-font);
+  color: var(--wg-text);
+  background: var(--wg-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.wg-boot {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--wg-text-muted);
+  font-size: 14px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}

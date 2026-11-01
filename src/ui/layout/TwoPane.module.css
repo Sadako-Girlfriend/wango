@@ -1,0 +1,37 @@
+.shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--wg-bg);
+}
+
+.full {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  /* 左栏保底宽度，避免工具栏按钮被挤成竖排字 */
+  grid-template-columns: minmax(300px, var(--wg-tree-width)) 1fr;
+  gap: 0;
+  /* 顶贴选项卡，去掉红框那条灰缝；左右下保留一点呼吸 */
+  padding: 0 10px 10px;
+}
+
+.paneLeft,
+.paneRight {
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.paneLeft {
+  margin-right: 10px;
+}

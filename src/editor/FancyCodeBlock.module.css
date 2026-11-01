@@ -1,0 +1,323 @@
+/**
+ * 深色代码块：对齐参考图（语言标 / 复制 / 行号 / 展开），One Dark 系配色。
+ */
+
+/* 长图 PDF 导出：强制展开、藏交互控件 */
+:global([data-wg-export]) .root[data-collapsed] .scroller {
+  max-height: none;
+  overflow: visible;
+}
+
+:global([data-wg-export]) .fade,
+:global([data-wg-export]) .expandBtn,
+:global([data-wg-export]) .copyBtn,
+:global([data-wg-export]) .langCaret {
+  display: none !important;
+}
+
+.root {
+  position: relative;
+  margin: 14px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1e1f26;
+  border: 1px solid #2a2b33;
+  color: #abb2bf;
+  font-family: var(--wg-font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #16171d;
+  border-bottom: 1px solid #2a2b33;
+  border-radius: 10px 10px 0 0;
+  user-select: none;
+}
+
+.langWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.langTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px 0 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #c8ccd4;
+  font-family: var(--wg-font);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  max-width: 160px;
+}
+
+.langTrigger:hover,
+.langTrigger[data-open] {
+  color: #eef0f4;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.langName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.langCaret {
+  flex-shrink: 0;
+  color: #8b909a;
+  transition: transform 160ms ease;
+}
+
+.langTrigger[data-open] .langCaret {
+  transform: rotate(180deg);
+  color: #c8ccd4;
+}
+
+.langMenu {
+  /* portal 到 body：fixed，不撑开编辑区、不把短代码块顶走 */
+  position: fixed;
+  z-index: 10000;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: 240px;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid #32343e;
+  background: #1a1b22;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 12px 28px rgba(0, 0, 0, 0.45);
+  scrollbar-width: thin;
+  scrollbar-color: #3a3c48 transparent;
+}
+
+.langMenu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.langMenu::-webkit-scrollbar-thumb {
+  background: #3a3c48;
+  border-radius: 8px;
+  border: 2px solid #1a1b22;
+}
+
+.langItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #c4c8d0;
+  font-family: var(--wg-font);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.langItem:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #f0f2f6;
+}
+
+.langItem[data-selected] {
+  background: rgba(97, 175, 239, 0.16);
+  color: #9ecbf5;
+}
+
+.langItem[data-selected]:hover {
+  background: rgba(97, 175, 239, 0.22);
+}
+
+.copyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #9aa0ab;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.copyBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6e8ee;
+}
+
+.scroller {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  overflow: auto;
+  max-height: none;
+}
+
+.root[data-collapsed] .scroller {
+  /* 约 12 行：行高 1.55 * 13px ≈ 20.15，12 * 20 ≈ 242 + 上下 padding */
+  max-height: 248px;
+  overflow: hidden;
+}
+
+.gutter {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0 12px 12px;
+  min-width: 2.4em;
+  text-align: right;
+  color: #5c6370;
+  user-select: none;
+  border-right: 1px solid #2a2b33;
+  background: #1a1b21;
+}
+
+.lineNo {
+  display: block;
+  padding-right: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+  height: 1.55em;
+}
+
+.pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  white-space: pre;
+  tab-size: 4;
+  min-width: 0;
+}
+
+.pre code {
+  display: block;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  padding: 0;
+  white-space: inherit;
+  min-height: 1.55em;
+}
+
+/* —— 语法高亮（One Dark 感） —— */
+.pre :global(.hljs-comment),
+.pre :global(.hljs-quote) {
+  color: #5c6370;
+  font-style: italic;
+}
+
+.pre :global(.hljs-keyword),
+.pre :global(.hljs-selector-tag),
+.pre :global(.hljs-meta .hljs-keyword) {
+  color: #c678dd;
+}
+
+.pre :global(.hljs-title),
+.pre :global(.hljs-title.function_),
+.pre :global(.hljs-title.class_),
+.pre :global(.hljs-section) {
+  color: #61afef;
+}
+
+.pre :global(.hljs-string),
+.pre :global(.hljs-attr),
+.pre :global(.hljs-template-variable) {
+  color: #98c379;
+}
+
+.pre :global(.hljs-number),
+.pre :global(.hljs-literal),
+.pre :global(.hljs-symbol),
+.pre :global(.hljs-bullet) {
+  color: #d19a66;
+}
+
+.pre :global(.hljs-built_in),
+.pre :global(.hljs-type),
+.pre :global(.hljs-params) {
+  color: #e5c07b;
+}
+
+.pre :global(.hljs-variable),
+.pre :global(.hljs-name),
+.pre :global(.hljs-attr) {
+  color: #e06c75;
+}
+
+.pre :global(.hljs-meta),
+.pre :global(.hljs-doctag) {
+  color: #56b6c2;
+}
+
+.pre :global(.hljs-punctuation),
+.pre :global(.hljs-operator) {
+  color: #abb2bf;
+}
+
+.fade {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 36px;
+  height: 48px;
+  background: linear-gradient(
+    to bottom,
+    rgba(30, 31, 38, 0),
+    rgba(30, 31, 38, 0.92)
+  );
+}
+
+.expandBtn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 36px;
+  border: none;
+  border-top: 1px solid #2a2b33;
+  border-radius: 0 0 10px 10px;
+  background: #16171d;
+  color: #9aa0ab;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.expandBtn:hover {
+  color: #e6e8ee;
+  background: #1a1b22;
+}
+
+.chevronUp {
+  transform: rotate(180deg);
+}

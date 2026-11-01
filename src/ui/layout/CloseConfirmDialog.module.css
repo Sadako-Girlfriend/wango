@@ -1,0 +1,70 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.panel {
+  width: min(400px, calc(100vw - 32px));
+  padding: 20px 20px 16px;
+  border-radius: var(--wg-radius-md);
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  box-shadow: var(--wg-shadow);
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.body {
+  margin: 0 0 18px;
+  color: var(--wg-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ghost,
+.danger,
+.primary {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg-elevated);
+  color: var(--wg-text);
+}
+
+.ghost:hover {
+  background: var(--wg-bg-muted);
+}
+
+.danger {
+  color: var(--wg-danger);
+}
+
+.danger:hover {
+  background: #fef2f2;
+}
+
+.primary {
+  border-color: var(--wg-accent);
+  background: var(--wg-accent);
+  color: #fff;
+}
+
+.primary:hover {
+  filter: brightness(0.96);
+}

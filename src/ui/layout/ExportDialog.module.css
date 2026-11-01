@@ -1,0 +1,481 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.panel {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 16px 16px 12px;
+  border-radius: var(--wg-radius-md);
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  box-shadow: var(--wg-shadow);
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--wg-text-secondary);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(200px, 1.05fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.formatCol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.formatLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wg-text-secondary);
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.tile,
+.wideTile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 56px;
+  padding: 8px;
+  text-align: left;
+  border-radius: var(--wg-radius-sm);
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  cursor: pointer;
+}
+
+.wideTile {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 8px;
+}
+
+.tile:hover:not(:disabled),
+.wideTile:hover:not(:disabled) {
+  background: var(--wg-bg-muted);
+}
+
+.tileActive {
+  border-color: var(--wg-accent);
+  background: var(--wg-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--wg-accent);
+  color: var(--wg-accent);
+}
+
+.tile:disabled,
+.wideTile:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.tileIcon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: inherit;
+  opacity: 0.9;
+}
+
+.tileIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tileText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tileLabel {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.tileUse {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--wg-text-secondary);
+  font-weight: 500;
+}
+
+.tileActive .tileUse {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.settingsCol {
+  min-width: 0;
+  padding: 10px;
+  border-radius: var(--wg-radius-sm);
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  box-sizing: border-box;
+}
+
+.panelTitle {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.panelDesc {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--wg-text-secondary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.sample {
+  position: relative;
+  height: 96px;
+  padding: 4px;
+  border-radius: var(--wg-radius-sm);
+  border: 1px dashed var(--wg-border);
+  background: var(--wg-bg-elevated);
+  overflow: hidden;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+}
+
+/* 仅有选项时出现；随内容增高，不预留空白、不内部滚动 */
+.optionsSlot {
+  display: none;
+}
+
+.optionsSlotActive {
+  display: block;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--wg-border-subtle);
+}
+
+.scopeSub {
+  margin-top: 8px;
+}
+
+.sampleBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--wg-text-secondary);
+  background: var(--wg-bg-muted);
+  border: 1px solid var(--wg-border);
+}
+
+.sampleSvg {
+  width: 100%;
+  height: 100%;
+  max-height: 88px;
+  display: block;
+}
+
+.sampleLogo {
+  height: 100%;
+  max-height: 88px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  display: block;
+  border-radius: 6px;
+}
+
+.svgSurface {
+  fill: var(--wg-bg);
+  stroke: var(--wg-border);
+  stroke-width: 1;
+}
+
+.svgPaper {
+  fill: #fff;
+  stroke: var(--wg-border);
+  stroke-width: 1;
+}
+
+.svgFold {
+  fill: var(--wg-bg-muted);
+  stroke: none;
+}
+
+.svgFoldEdge {
+  stroke: var(--wg-border);
+  stroke-width: 1;
+}
+
+.svgAccent {
+  fill: var(--wg-accent);
+}
+
+.svgLine {
+  fill: #e2e8f0;
+}
+
+.svgWire {
+  stroke: var(--wg-border);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.svgChip {
+  fill: var(--wg-bg);
+  stroke: var(--wg-border);
+  stroke-width: 1;
+}
+
+.svgChipSoft {
+  fill: var(--wg-bg-muted);
+  stroke: var(--wg-border);
+  stroke-width: 1;
+}
+
+.svgPhoto {
+  fill: #e8eef7;
+  stroke: var(--wg-border);
+  stroke-width: 1;
+}
+
+.svgPhotoHi {
+  fill: #c7d2fe;
+}
+
+.svgPhotoMt {
+  fill: #94a3b8;
+  opacity: 0.55;
+}
+
+.svgFolder {
+  fill: var(--wg-accent-soft);
+  stroke: var(--wg-accent);
+  stroke-width: 1.2;
+}
+
+.svgFolderTab {
+  fill: var(--wg-accent);
+  opacity: 0.35;
+  stroke: none;
+}
+
+.svgCodeAccent {
+  fill: var(--wg-accent);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.svgCodeMuted {
+  fill: var(--wg-text-secondary);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+}
+
+.svgOnAccent {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: system-ui, sans-serif;
+}
+
+.svgChipText {
+  fill: var(--wg-text);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: system-ui, sans-serif;
+}
+
+.svgPdfLabel {
+  fill: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  font-family: system-ui, sans-serif;
+}
+
+.svgSideTag {
+  fill: var(--wg-accent);
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.55;
+}
+
+.svgTiny {
+  fill: var(--wg-text-secondary);
+  font-size: 10px;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+
+.optionText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.optionLabel {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.optionHint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--wg-text-secondary);
+}
+
+.scopeBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.scopeLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wg-text-secondary);
+  margin-bottom: 8px;
+}
+
+.scopeLabel + .scopeRow + .scopeLabel,
+.scopeLabel + .scopeCol + .scopeLabel {
+  margin-top: 12px;
+}
+
+.scopeRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scopeCol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scopeBtn,
+.scopeActive {
+  flex: 1;
+  min-width: 0;
+  min-height: 28px;
+  height: auto;
+  padding: 5px 8px;
+  border-radius: var(--wg-radius-sm);
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg-elevated);
+  color: var(--wg-text);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.scopeBtn:hover:not(:disabled) {
+  background: var(--wg-bg-muted);
+}
+
+.scopeActive {
+  border-color: var(--wg-accent);
+  background: var(--wg-accent-soft);
+  color: var(--wg-accent);
+  font-weight: 600;
+}
+
+.scopeBtn:disabled,
+.scopeActive:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ghost,
+.primary {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg-elevated);
+  color: var(--wg-text);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--wg-bg-muted);
+}
+
+.primary {
+  border-color: var(--wg-accent);
+  background: var(--wg-accent);
+  color: #fff;
+}
+
+.primary:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.ghost:disabled,
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

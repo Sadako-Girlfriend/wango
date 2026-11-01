@@ -1,0 +1,360 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  /* 灰线上下留白略加大，颜色用实一点的边框色，避免「浅到看不见」 */
+  padding: 6px 0 12px;
+  border-bottom: 1px solid var(--wg-border);
+  margin-bottom: 18px;
+}
+
+.blockSelect {
+  height: 30px;
+  min-width: 96px;
+  padding: 0 8px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  background: var(--wg-bg-elevated);
+  color: var(--wg-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.fontSelect {
+  height: 30px;
+  width: 118px;
+  max-width: 28vw;
+  padding: 0 6px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  background: var(--wg-bg-elevated);
+  color: var(--wg-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sizeCombobox {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  height: 30px;
+  width: 72px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  background: var(--wg-bg-elevated);
+  box-sizing: border-box;
+}
+
+.sizeCombobox:focus-within {
+  border-color: var(--wg-accent);
+  box-shadow: 0 0 0 3px var(--wg-accent-soft);
+}
+
+.sizeComboboxInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--wg-text);
+  font-size: 12px;
+  text-align: center;
+  padding: 0 2px 0 6px;
+  outline: none;
+  cursor: text;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sizeCombobox[data-typing] {
+  border-color: var(--wg-accent);
+  box-shadow: 0 0 0 3px var(--wg-accent-soft);
+}
+
+.sizePlaceholder {
+  color: var(--wg-text-muted);
+  font-size: 11px;
+}
+
+.sizeComboboxCaret {
+  flex-shrink: 0;
+  width: 18px;
+  border: none;
+  border-left: 1px solid var(--wg-border-subtle);
+  background: transparent;
+  color: var(--wg-text-muted);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sizeComboboxCaret:hover {
+  background: var(--wg-bg-muted);
+  color: var(--wg-text);
+}
+
+.sizeMenu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  min-width: 100%;
+  max-height: 220px;
+  overflow: auto;
+  padding: 4px;
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow);
+}
+
+.sizeMenuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  color: var(--wg-text);
+  font-size: 12px;
+}
+
+.sizeMenuItem:hover,
+.sizeMenuItem[data-active] {
+  background: var(--wg-bg-muted);
+}
+
+.sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--wg-border);
+  flex-shrink: 0;
+}
+
+.toolBtn {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--wg-text-secondary);
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  padding: 0;
+}
+
+.toolBtn:hover:not(:disabled) {
+  background: var(--wg-bg-muted);
+  color: var(--wg-text);
+}
+
+.toolBtn[data-active] {
+  background: var(--wg-accent-soft);
+  color: var(--wg-accent);
+}
+
+.toolBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.menuWrap {
+  position: relative;
+}
+
+.colorMenuWide {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  width: 248px;
+  padding: 8px;
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow);
+}
+
+.colorClear {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  color: var(--wg-text);
+  font-size: 12px;
+}
+
+.colorClear:hover {
+  background: var(--wg-bg-muted);
+}
+
+.colorSectionLabel {
+  margin: 6px 0 4px;
+  font-size: 11px;
+  color: var(--wg-text-muted);
+}
+
+.colorThemeGrid {
+  display: grid;
+  gap: 2px;
+}
+
+.colorStandardRow,
+.colorHighlightGrid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+}
+
+.swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 18px;
+  min-height: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.swatch:hover {
+  outline: 2px solid var(--wg-accent-soft);
+  outline-offset: 0;
+  z-index: 1;
+}
+
+.swatch[data-active] {
+  outline: 2px solid var(--wg-accent);
+  outline-offset: 0;
+  z-index: 1;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.content :global(.tiptap) {
+  outline: none;
+  min-height: 240px;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--wg-text);
+}
+
+.content :global(.tiptap mark) {
+  border-radius: 2px;
+  padding: 0 1px;
+  color: inherit;
+}
+
+.content :global(.tiptap > * + *) {
+  margin-top: 0.65em;
+}
+
+.content :global(.tiptap h1) {
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0.85em 0 0.35em;
+}
+
+.content :global(.tiptap h2) {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0.75em 0 0.3em;
+}
+
+.content :global(.tiptap p.is-editor-empty:first-child::before) {
+  color: var(--wg-text-muted);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* 裸 pre 回退（FancyCodeBlock 在 .react-renderer 内，不受此条影响） */
+.content :global(.tiptap > pre) {
+  background: #1e1f26;
+  color: #abb2bf;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: var(--wg-font-mono);
+  font-size: 13px;
+  overflow: auto;
+  border: 1px solid #2a2b33;
+}
+
+.content :global(.react-renderer.node-codeBlock) {
+  width: 100%;
+  margin: 0;
+}
+
+.content :global(.tiptap ul),
+.content :global(.tiptap ol) {
+  padding-left: 1.4rem;
+  margin: 0.4em 0;
+}
+
+.content :global(.tiptap li + li) {
+  margin-top: 0.25em;
+}
+
+.content :global(.tiptap a.wg-link),
+.content :global(.tiptap a) {
+  color: var(--wg-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.content :global(.tiptap u) {
+  text-underline-offset: 2px;
+}
+
+.content :global(.react-renderer.node-image) {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.content :global(.react-renderer.node-callout) {
+  width: 100%;
+  margin: 0;
+}
+
+/* 仅无 NodeView 的纯 HTML 回退（不要 ::before，避免与 NodeView 图标叠两个灯泡） */
+.content :global(aside.wg-callout:not([data-wg-callout])),
+.content :global(aside[data-type="callout"]:not([data-wg-callout])) {
+  display: block;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: var(--wg-radius-md);
+  background: #fff8e6;
+  border: 1px solid #f3e2b3;
+}
+
+.content :global(.ProseMirror-selectednode) {
+  outline: none;
+}
