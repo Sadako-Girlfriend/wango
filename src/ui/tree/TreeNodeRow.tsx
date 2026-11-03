@@ -23,6 +23,11 @@ interface TreeNodeRowProps {
   enteringIds: Set<string>;
   overId: string | null;
   dropPlacement: DropPlacement | null;
+  renamingId: string | null;
+  renameDraft: string;
+  onRenameDraftChange: (value: string) => void;
+  onCommitRename: () => void;
+  onCancelRename: () => void;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
   onContextMenu: (id: string, clientX: number, clientY: number) => void;
@@ -40,6 +45,11 @@ export function TreeNodeRow({
   enteringIds,
   overId,
   dropPlacement,
+  renamingId,
+  renameDraft,
+  onRenameDraftChange,
+  onCommitRename,
+  onCancelRename,
   onSelect,
   onToggle,
   onContextMenu,
@@ -52,7 +62,9 @@ export function TreeNodeRow({
   const isCurrent = currentMatchId === node.id;
   const isEntering = enteringIds.has(node.id);
   const showDrop = overId === node.id && dropPlacement;
+  const renaming = renamingId === node.id;
   const suppressClickRef = useRef(false);
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const {
     attributes,
@@ -61,17 +73,25 @@ export function TreeNodeRow({
     isDragging,
   } = useDraggable({
     id: node.id,
-    disabled: !dragEnabled,
+    disabled: !dragEnabled || renaming,
   });
 
   const { setNodeRef: setDropRef } = useDroppable({
     id: node.id,
-    disabled: !dragEnabled,
+    disabled: !dragEnabled || renaming,
   });
 
   useEffect(() => {
     if (isDragging) suppressClickRef.current = true;
   }, [isDragging]);
+
+  useEffect(() => {
+    if (!renaming) return;
+    const el = renameInputRef.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+  }, [renaming]);
 
   const setRefs = (el: HTMLDivElement | null) => {
     setDragRef(el);
@@ -94,21 +114,27 @@ export function TreeNodeRow({
         data-enter={isEntering || undefined}
         data-drop={showDrop ? dropPlacement : undefined}
         data-dragging={isDragging || undefined}
-        data-draggable={dragEnabled || undefined}
+        data-draggable={dragEnabled && !renaming ? true : undefined}
+        data-renaming={renaming || undefined}
         aria-selected={selected}
         aria-expanded={hasChildren ? !collapsed : undefined}
-        {...(dragEnabled ? { ...listeners, ...attributes } : {})}
+        {...(dragEnabled && !renaming ? { ...listeners, ...attributes } : {})}
         role="treeitem"
-        onClick={() => {
+        onClick={(e) => {
+          if (renaming) return;
+          const target = e.target as HTMLElement | null;
+          if (target?.closest(`.${styles.twist}`)) return;
           if (suppressClickRef.current) {
             suppressClickRef.current = false;
             return;
           }
+          // 双击判定在 TreePane.handleRowClick（带超时重置），不用浏览器 dblclick
           onSelect(node.id);
         }}
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          if (renaming) return;
           onContextMenu(node.id, e.clientX, e.clientY);
         }}
       >
@@ -129,9 +155,34 @@ export function TreeNodeRow({
           <span className={styles.twistMuted} />
         )}
         <span className={styles.number}>{node.number}</span>
-        <span className={styles.title}>
-          {highlightTitle(node.title, matchQuery)}
-        </span>
+        {renaming ? (
+          <input
+            ref={renameInputRef}
+            className={styles.renameInput}
+            value={renameDraft}
+            aria-label={t("tree.menuRename")}
+            title={t("tree.renameHint")}
+            onChange={(e) => onRenameDraftChange(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onBlur={() => onCommitRename()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                onCommitRename();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancelRename();
+              }
+            }}
+          />
+        ) : (
+          <span className={styles.title} title={t("tree.renameHint")}>
+            {highlightTitle(node.title, matchQuery)}
+          </span>
+        )}
         {node.priority ? (
           <PriorityIcon
             priority={node.priority}
@@ -166,6 +217,11 @@ export function TreeNodeRow({
             enteringIds={enteringIds}
             overId={overId}
             dropPlacement={dropPlacement}
+            renamingId={renamingId}
+            renameDraft={renameDraft}
+            onRenameDraftChange={onRenameDraftChange}
+            onCommitRename={onCommitRename}
+            onCancelRename={onCancelRename}
             onSelect={onSelect}
             onToggle={onToggle}
             onContextMenu={onContextMenu}

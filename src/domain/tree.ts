@@ -6,6 +6,7 @@
 import { t } from "@/i18n";
 import type {
   AttachmentMeta,
+  GlossaryNode,
   NodePriority,
   ProjectData,
   TreeNode,
@@ -65,16 +66,64 @@ export function createNode(partial?: Partial<TreeNode>): TreeNode {
 /** 空项目 */
 export function createEmptyProject(name?: string): ProjectData {
   const root = createNode({ title: t("editor.nodeUntitled") });
-  return { name: name ?? t("project.untitled"), tree: [root] };
+  return {
+    name: name ?? t("project.untitled"),
+    tree: [root],
+    glossary: [],
+    glossaryLinks: [],
+    glossaryLogs: [],
+  };
+}
+
+function ensureGlossaryNodeFields(nodes: GlossaryNode[]): GlossaryNode[] {
+  return nodes.map((n) => {
+    const color =
+      typeof n.color === "string" && /^#[0-9a-fA-F]{6}$/.test(n.color)
+        ? n.color
+        : undefined;
+    const next: GlossaryNode = {
+      ...n,
+      aliases: Array.isArray(n.aliases) ? n.aliases : [],
+      blacklist: Array.isArray(n.blacklist) ? n.blacklist : [],
+      renameHistory: Array.isArray(n.renameHistory) ? n.renameHistory : [],
+      children: ensureGlossaryNodeFields(
+        Array.isArray(n.children) ? n.children : [],
+      ),
+    };
+    if (color) next.color = color;
+    else delete next.color;
+    return next;
+  });
+}
+
+/** 保证词表字段存在（旧数据 / 部分构造） */
+export function ensureGlossaryFields(project: ProjectData): ProjectData {
+  const glossaryLinks = (
+    Array.isArray(project.glossaryLinks) ? project.glossaryLinks : []
+  ).map((l) => ({
+    ...l,
+    originText: l.originText || l.matchedText,
+  }));
+  return {
+    ...project,
+    glossary: ensureGlossaryNodeFields(
+      Array.isArray(project.glossary) ? project.glossary : [],
+    ),
+    glossaryLinks,
+    glossaryLogs: Array.isArray(project.glossaryLogs)
+      ? project.glossaryLogs
+      : [],
+  };
 }
 
 /** 保证有项目名；旧文件缺 name 时用根节点标题兜底 */
 export function ensureProjectName(project: ProjectData): ProjectData {
-  const trimmed = project.name?.trim();
-  if (trimmed) return { ...project, name: trimmed };
+  const withGloss = ensureGlossaryFields(project);
+  const trimmed = withGloss.name?.trim();
+  if (trimmed) return { ...withGloss, name: trimmed };
   const fallback =
-    project.tree[0]?.title?.trim() || t("project.untitled");
-  return { ...project, name: fallback };
+    withGloss.tree[0]?.title?.trim() || t("project.untitled");
+  return { ...withGloss, name: fallback };
 }
 
 /** 深拷贝节点（含子孙） */
@@ -211,6 +260,91 @@ export function promoteNode(tree: TreeNode[], id: string): TreeNode[] {
 }
 
 /**
+ * 释放子节点：孩子们升到与父同级（紧挨父之后），父节点保留且 children 清空。
+ * 无子节点则不变。返回 { tree, selectId }（选中第一个被释放的孩子）。
+ */
+export function releaseChildren(
+  tree: TreeNode[],
+  id: string,
+): { tree: TreeNode[]; selectId: string | null } {
+  const loc = findNodeLocation(tree, id);
+  if (!loc || loc.node.children.length === 0) {
+    return { tree, selectId: null };
+  }
+  const kids = loc.node.children.map(cloneNode);
+  const selectId = kids[0]?.id ?? null;
+  const cleared: TreeNode = { ...loc.node, children: [] };
+
+  if (!loc.parent) {
+    const roots = [...tree];
+    roots[loc.index] = cleared;
+    roots.splice(loc.index + 1, 0, ...kids);
+    return { tree: roots, selectId };
+  }
+
+  return {
+    tree: updateChildrenOf(tree, loc.parent.id, (children) => {
+      const copy = [...children];
+      copy[loc.index] = cleared;
+      copy.splice(loc.index + 1, 0, ...kids);
+      return copy;
+    }),
+    selectId,
+  };
+}
+
+/**
+ * 解散节点：用其子节点替换自身（插在原位置）；父被移除。
+ * 父正文/附件并入第一个孩子；无子节点则不变。
+ */
+export function dissolveNode(
+  tree: TreeNode[],
+  id: string,
+): { tree: TreeNode[]; selectId: string | null } {
+  const loc = findNodeLocation(tree, id);
+  if (!loc || loc.node.children.length === 0) {
+    return { tree, selectId: null };
+  }
+  let kids = loc.node.children.map(cloneNode);
+  const body = loc.node.content.trim();
+  const atts = loc.node.attachments;
+  if ((body || atts.length) && kids.length) {
+    const first = kids[0]!;
+    kids = [
+      {
+        ...first,
+        content: body
+          ? first.content.trim()
+            ? `${body}\n\n${first.content}`
+            : body
+          : first.content,
+        attachments: [
+          ...atts.map((a) => ({ ...a })),
+          ...first.attachments.map((a) => ({ ...a })),
+        ],
+      },
+      ...kids.slice(1),
+    ];
+  }
+  const selectId = kids[0]?.id ?? null;
+
+  if (!loc.parent) {
+    const roots = [...tree];
+    roots.splice(loc.index, 1, ...kids);
+    return { tree: roots, selectId };
+  }
+
+  return {
+    tree: updateChildrenOf(tree, loc.parent.id, (children) => {
+      const copy = [...children];
+      copy.splice(loc.index, 1, ...kids);
+      return copy;
+    }),
+    selectId,
+  };
+}
+
+/**
  * 降级：节点成为前一个同级兄弟的最后一个子节点。
  * 没有前一个兄弟则无法降级。
  */
@@ -223,6 +357,22 @@ export function demoteNode(tree: TreeNode[], id: string): TreeNode[] {
   const moved = cloneNode(loc.node);
   let next = removeNode(tree, id);
   return addChild(next, prev.id, moved);
+}
+
+/**
+ * 同级上移/下移一格（dir: -1 上 / +1 下）。越界则不变。
+ */
+export function moveSibling(
+  tree: TreeNode[],
+  id: string,
+  dir: -1 | 1,
+): TreeNode[] {
+  const loc = findNodeLocation(tree, id);
+  if (!loc) return tree;
+  const targetIndex = loc.index + dir;
+  const siblings = loc.parent ? loc.parent.children : tree;
+  if (targetIndex < 0 || targetIndex >= siblings.length) return tree;
+  return moveNode(tree, id, loc.parent?.id ?? null, targetIndex);
 }
 
 /**

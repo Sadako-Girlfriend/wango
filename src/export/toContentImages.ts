@@ -6,8 +6,16 @@
  */
 
 import type { ProjectData, TreeNode } from "@/domain";
-import { withNumbering, withNumberingFrom, type NumberedTreeNode } from "@/domain";
-import { renderNumberedToPngBlob } from "./longImageCapture";
+import {
+  collectGlossaryColors,
+  withNumbering,
+  withNumberingFrom,
+  type NumberedTreeNode,
+} from "@/domain";
+import {
+  renderNumberedToPngBlob,
+  type GlossaryExportPaint,
+} from "./longImageCapture";
 
 export type ContentImageMode = "long" | "batch-node" | "batch-major";
 
@@ -16,6 +24,24 @@ export type ContentImageItem = {
   fileName: string;
   blob: Blob;
 };
+
+export type ContentImageOptions = {
+  /** 为 true 时不画词表引用高亮；默认 false */
+  hideGlossaryStyles?: boolean;
+};
+
+function glossaryPaintOf(
+  project: ProjectData,
+  hide?: boolean,
+): GlossaryExportPaint | undefined {
+  if (hide) return undefined;
+  const links = project.glossaryLinks ?? [];
+  if (!links.length) return undefined;
+  return {
+    links,
+    colors: collectGlossaryColors(project.glossary ?? []),
+  };
+}
 
 function projectTitle(project: ProjectData): string {
   return (
@@ -61,22 +87,31 @@ function aloneNumbered(node: NumberedTreeNode): NumberedTreeNode {
 }
 
 /** 单张：整棵树长图 */
-export async function toLongTreePng(project: ProjectData): Promise<Blob> {
+export async function toLongTreePng(
+  project: ProjectData,
+  options?: ContentImageOptions,
+): Promise<Blob> {
   const numbered = withNumbering(project.tree);
-  return renderNumberedToPngBlob(numbered, projectTitle(project));
+  return renderNumberedToPngBlob(
+    numbered,
+    projectTitle(project),
+    glossaryPaintOf(project, options?.hideGlossaryStyles),
+  );
 }
 
 /** 多张：每个节点一图，不含子树 */
 export async function toBatchNodePngs(
   project: ProjectData,
+  options?: ContentImageOptions,
 ): Promise<ContentImageItem[]> {
   const flat = flattenNumbered(withNumbering(project.tree));
   if (!flat.length) throw new Error("没有可导出的内容");
+  const paint = glossaryPaintOf(project, options?.hideGlossaryStyles);
   const items: ContentImageItem[] = [];
   for (const node of flat) {
     const sheet = aloneNumbered(node);
     const title = `${sheet.number} ${sheet.title}`.trim();
-    const blob = await renderNumberedToPngBlob([sheet], title);
+    const blob = await renderNumberedToPngBlob([sheet], title, paint);
     items.push({
       fileName: `${safeFileBase(sheet.number, sheet.title)}.png`,
       blob,
@@ -88,13 +123,15 @@ export async function toBatchNodePngs(
 /** 多张：根级大节点各一图，含子树 */
 export async function toBatchMajorPngs(
   project: ProjectData,
+  options?: ContentImageOptions,
 ): Promise<ContentImageItem[]> {
   const roots = withNumbering(project.tree);
   if (!roots.length) throw new Error("没有可导出的内容");
+  const paint = glossaryPaintOf(project, options?.hideGlossaryStyles);
   const items: ContentImageItem[] = [];
   for (const root of roots) {
     const title = `${root.number} ${root.title}`.trim();
-    const blob = await renderNumberedToPngBlob([root], title);
+    const blob = await renderNumberedToPngBlob([root], title, paint);
     items.push({
       fileName: `${safeFileBase(root.number, root.title)}.png`,
       blob,

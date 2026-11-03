@@ -4,6 +4,9 @@
 
 import { isTauriRuntime, getAppDataDir, joinPath } from "./draftStore";
 import { parentDir } from "./pathUtils";
+import { mergeHotkeys } from "@/hotkeys/defaults";
+import { notifyHotkeysChanged } from "@/hotkeys/listeners";
+import type { HotkeyId, HotkeyMap } from "@/hotkeys/types";
 
 export const APP_SETTINGS_SCHEMA = 1 as const;
 
@@ -16,7 +19,29 @@ export interface AppSettings {
   hideExportWatermark: boolean;
   /** 导出对话框默认目录（仅本机；空则回退到工程所在目录） */
   defaultExportDir: string;
+  /** 引用为词条防懵提示：勾选不再提示 */
+  hideGlossaryRefTip: boolean;
+  /** 左栏词表区高度占比 0.15–0.7 */
+  glossaryPaneRatio: number;
+  /** 左栏（大纲+词表）宽度像素 */
+  treePaneWidth: number;
+  /** 左栏是否收起 */
+  treePaneCollapsed: boolean;
+  /** 右侧 Agent 是否展开（首启默认开；之后跟用户） */
+  agentPaneOpen: boolean;
+  /** 右侧 Agent 宽度像素 */
+  agentPaneWidth: number;
+  /** 快捷键覆盖（缺省用默认表） */
+  hotkeys: HotkeyMap;
 }
+
+export const TREE_PANE_WIDTH_MIN = 220;
+export const TREE_PANE_WIDTH_MAX = 560;
+export const TREE_PANE_WIDTH_DEFAULT = 320;
+
+export const AGENT_PANE_WIDTH_MIN = 280;
+export const AGENT_PANE_WIDTH_MAX = 520;
+export const AGENT_PANE_WIDTH_DEFAULT = 360;
 
 const LS_KEY = "wango.settings.v1";
 const REL_FILE = "settings/settings.json";
@@ -31,7 +56,40 @@ export function emptyAppSettings(): AppSettings {
     model: "",
     hideExportWatermark: false,
     defaultExportDir: "",
+    hideGlossaryRefTip: false,
+    glossaryPaneRatio: 0.32,
+    treePaneWidth: TREE_PANE_WIDTH_DEFAULT,
+    treePaneCollapsed: false,
+    agentPaneOpen: true,
+    agentPaneWidth: AGENT_PANE_WIDTH_DEFAULT,
+    hotkeys: mergeHotkeys(null),
   };
+}
+
+function normalizeHotkeys(raw: unknown): HotkeyMap {
+  if (!raw || typeof raw !== "object") return mergeHotkeys(null);
+  return mergeHotkeys(raw as Partial<Record<HotkeyId, string>>);
+}
+
+function clampRatio(n: number): number {
+  if (!Number.isFinite(n)) return 0.32;
+  return Math.min(0.7, Math.max(0.15, n));
+}
+
+export function clampTreePaneWidth(n: number): number {
+  if (!Number.isFinite(n)) return TREE_PANE_WIDTH_DEFAULT;
+  return Math.min(
+    TREE_PANE_WIDTH_MAX,
+    Math.max(TREE_PANE_WIDTH_MIN, Math.round(n)),
+  );
+}
+
+export function clampAgentPaneWidth(n: number): number {
+  if (!Number.isFinite(n)) return AGENT_PANE_WIDTH_DEFAULT;
+  return Math.min(
+    AGENT_PANE_WIDTH_MAX,
+    Math.max(AGENT_PANE_WIDTH_MIN, Math.round(n)),
+  );
 }
 
 function normalize(raw: unknown): AppSettings {
@@ -46,6 +104,29 @@ function normalize(raw: unknown): AppSettings {
     hideExportWatermark: o.hideExportWatermark === true,
     defaultExportDir:
       typeof o.defaultExportDir === "string" ? o.defaultExportDir.trim() : "",
+    hideGlossaryRefTip: o.hideGlossaryRefTip === true,
+    glossaryPaneRatio: clampRatio(
+      typeof o.glossaryPaneRatio === "number" ? o.glossaryPaneRatio : 0.32,
+    ),
+    treePaneWidth: clampTreePaneWidth(
+      typeof o.treePaneWidth === "number"
+        ? o.treePaneWidth
+        : TREE_PANE_WIDTH_DEFAULT,
+    ),
+    treePaneCollapsed: o.treePaneCollapsed === true,
+    // 缺省字段：首启 / 升级后默认打开 Agent
+    agentPaneOpen:
+      (o as { agentPaneOpen?: unknown }).agentPaneOpen === undefined
+        ? true
+        : (o as { agentPaneOpen?: unknown }).agentPaneOpen === true,
+    agentPaneWidth: clampAgentPaneWidth(
+      typeof (o as { agentPaneWidth?: unknown }).agentPaneWidth === "number"
+        ? ((o as { agentPaneWidth: number }).agentPaneWidth)
+        : AGENT_PANE_WIDTH_DEFAULT,
+    ),
+    hotkeys: normalizeHotkeys(
+      (o as { hotkeys?: unknown }).hotkeys,
+    ),
   };
 }
 
@@ -122,6 +203,27 @@ export async function saveAppSettings(
     model: next.model.trim(),
     hideExportWatermark: next.hideExportWatermark === true,
     defaultExportDir: (next.defaultExportDir ?? "").trim(),
+    hideGlossaryRefTip: next.hideGlossaryRefTip === true,
+    glossaryPaneRatio: clampRatio(
+      typeof next.glossaryPaneRatio === "number"
+        ? next.glossaryPaneRatio
+        : 0.32,
+    ),
+    treePaneWidth: clampTreePaneWidth(
+      typeof next.treePaneWidth === "number"
+        ? next.treePaneWidth
+        : getAppSettings().treePaneWidth,
+    ),
+    treePaneCollapsed: next.treePaneCollapsed === true,
+    agentPaneOpen: next.agentPaneOpen !== false,
+    agentPaneWidth: clampAgentPaneWidth(
+      typeof next.agentPaneWidth === "number"
+        ? next.agentPaneWidth
+        : getAppSettings().agentPaneWidth,
+    ),
+    hotkeys: normalizeHotkeys(
+      (next as AppSettings).hotkeys ?? getAppSettings().hotkeys,
+    ),
   };
   const body = JSON.stringify(payload);
   if (isTauriRuntime()) {
@@ -133,5 +235,6 @@ export async function saveAppSettings(
     localStorage.setItem(LS_KEY, body);
   }
   cached = payload;
+  notifyHotkeysChanged();
   return payload;
 }

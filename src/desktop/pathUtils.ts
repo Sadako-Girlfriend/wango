@@ -73,6 +73,20 @@ export function defaultLongPdfFileName(
   return `${base}${t("export.longPdfSuffix")}`;
 }
 
+/** Word .docx 默认文件名 */
+export function defaultDocxFileName(
+  project: ProjectData,
+  scopeLabel?: string,
+): string {
+  const base = sanitizeFileBaseName(
+    scopeLabel?.trim() ||
+      project.name?.trim() ||
+      project.tree[0]?.title ||
+      t("export.defaultBase"),
+  );
+  return `${base}${t("export.docxSuffix")}`;
+}
+
 /** 内容长图 PNG 默认文件名 */
 export function defaultContentLongPngFileName(project: ProjectData): string {
   const base = sanitizeFileBaseName(

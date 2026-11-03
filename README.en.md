@@ -5,7 +5,7 @@ English | [简体中文](./README.md)
 A **local-first** tree-structured writing & knowledge-decomposition workstation.  
 Organize with a tree, write details in rich text, export for humans or AI — and optionally use OpenAI-compatible APIs for **Inspiration** generation.
 
-Version **0.3.37** · Windows desktop (Tauri) · [Apache-2.0](./LICENSE)
+Version **0.3.39** · Windows desktop (Tauri) · [Apache-2.0](./LICENSE)
 
 <p align="center">
   <img src="docs/screenshots/02-workspace.png" alt="WanGou workspace: tree + rich text" width="900" />
@@ -48,9 +48,29 @@ Context menu: add child, copy / paste, priority (submenu), labels, delete. Left-
 
 ![Tree menu & priority](docs/screenshots/04-tree-menu.png)
 
+### New from paste / file
+
+Paste a numbered outline, or import `.docx` / `.md`, preview, then open as a new project.
+
+| From paste | From file |
+| :--- | :--- |
+| ![From paste](docs/screenshots/11-paste-import.png) | ![From file](docs/screenshots/15-file-import.png) |
+
+### Glossary
+
+Bottom-left glossary: reference / copy outline terms, auto-scan and manual binds.
+
+![Glossary](docs/screenshots/12-glossary.png)
+
+### Agent (optional)
+
+Full-project chat; edit proposals require confirm; chat tabs; Apply all above the composer.
+
+![Agent](docs/screenshots/16-agent.png)
+
 ### Export
 
-Markdown (for AI), PDF, mind map, content images, full `.wango` copy.
+Markdown (for AI), PDF, mind map, content images, full `.wango` (optional Agent chat).
 
 ![Export](docs/screenshots/05-export.png)
 
@@ -64,9 +84,13 @@ Refine framework · Generate from one sentence · Outline only. Configure an Ope
 
 ![Inspiration](docs/screenshots/06-inspire.png)
 
-### Settings
+### Settings & productivity
 
-Language, model endpoint, default export folder, about / version.
+Language, model endpoint, export folder, **shortcuts**, content stats (F10).
+
+| Shortcuts | Content stats |
+| :--- | :--- |
+| ![Shortcuts](docs/screenshots/13-hotkeys.png) | ![Content stats](docs/screenshots/14-content-stats.png) |
 
 ![Settings](docs/screenshots/07-settings.png)
 
@@ -77,10 +101,13 @@ Language, model endpoint, default export folder, about / version.
 | Area | Highlights |
 |------|------------|
 | Projects | `.wango` ZIP · open / save / save-as · multi-tab · recents · single instance |
-| Tree | CRUD, promote / demote, drag-drop, search, priority, labels |
-| Editor | TipTap rich text · code blocks · callouts · images · attachments |
-| Export | Markdown · mind-map PNG · long PDF / images · `.wango` copy |
-| AI | Three Inspiration modes (optional) · keys stored locally |
+| New | From template · **from paste** · **from file** (`.docx` / `.md`) |
+| Tree | CRUD, promote / demote, drag-drop, search, priority, labels, release / dissolve |
+| Glossary | Reference / copy terms · link scan · blacklist · rename notes |
+| Editor | TipTap · code blocks · callouts · images · line height · attachments |
+| Export | Markdown · Word · mind-map PNG · long PDF / images · `.wango` copy |
+| AI | **Agent** proposals · inspiration modes · paste AI organize · keys local-only |
+| Power | Configurable shortcuts · content stats (F10) · open page tabs |
 | i18n | Chinese / English |
 
 Details: [FEATURES.en.md](./FEATURES.en.md) · [中文功能说明](./功能说明.md)

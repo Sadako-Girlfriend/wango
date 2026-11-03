@@ -6,7 +6,7 @@ import { useI18n } from "@/i18n/useI18n";
 import logo2 from "@/assets/logo-2.jpg";
 import styles from "./ExportDialog.module.css";
 
-type SampleKind = "ai" | "mindmap" | "wango-as" | "pdf" | "images";
+type SampleKind = "ai" | "mindmap" | "wango-as" | "pdf" | "images" | "docx";
 
 type Props = {
   kind: SampleKind;
@@ -24,6 +24,7 @@ export function ExportSamplePreview({ kind, imageMulti = false }: Props) {
       {kind === "pdf" && <SvgPdf />}
       {kind === "mindmap" && <SvgMindmap />}
       {kind === "images" && (imageMulti ? <SvgImagesMulti /> : <SvgImagesLong />)}
+      {kind === "docx" && <SvgDocx />}
       {kind === "wango-as" && <SvgWango />}
     </div>
   );
@@ -195,6 +196,40 @@ function SvgImagesMulti() {
       <text x="150" y="86" textAnchor="middle" className={styles.svgTiny}>
         2
       </text>
+    </svg>
+  );
+}
+
+/** Word：可编辑正文 + 代码/备注以图嵌入 */
+function SvgDocx() {
+  return (
+    <svg
+      className={styles.sampleSvg}
+      viewBox="0 0 220 128"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect
+        x="48"
+        y="8"
+        width="124"
+        height="112"
+        rx="4"
+        className={styles.svgPaper}
+      />
+      <path d="M148 8v24h24" className={styles.svgFold} />
+      <path d="M148 8l24 24" className={styles.svgFoldEdge} />
+      <rect x="60" y="20" width="36" height="10" rx="2" className={styles.svgAccent} />
+      <text x="64" y="28" className={styles.svgPdfLabel}>
+        DOC
+      </text>
+      <rect x="60" y="40" width="88" height="5" rx="1.5" className={styles.svgLine} />
+      <rect x="60" y="50" width="72" height="5" rx="1.5" className={styles.svgLine} />
+      <rect x="60" y="64" width="88" height="28" rx="3" className={styles.svgPhoto} />
+      <text x="104" y="82" textAnchor="middle" className={styles.svgTiny}>
+        code / note
+      </text>
+      <rect x="60" y="100" width="64" height="5" rx="1.5" className={styles.svgLine} />
     </svg>
   );
 }

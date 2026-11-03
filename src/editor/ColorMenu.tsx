@@ -5,11 +5,8 @@
 import { useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/react";
 import { useI18n } from "@/i18n/useI18n";
-import {
-  HIGHLIGHT_COLORS,
-  STANDARD_COLORS,
-  THEME_COLOR_COLUMNS,
-} from "./colorPalettes";
+import { HIGHLIGHT_COLORS } from "./colorPalettes";
+import { ThemeColorPalette } from "@/ui/color/ThemeColorPalette";
 import { IconHighlight, IconTextColor } from "./toolbarIcons";
 import styles from "./EditorView.module.css";
 
@@ -80,9 +77,6 @@ export function ColorMenu({ editor, open, onOpenChange }: ColorMenuProps) {
     onOpenChange(null);
   };
 
-  const themeRows = 6;
-  const themeCols = THEME_COLOR_COLUMNS.length;
-
   return (
     <>
       <div
@@ -106,77 +100,19 @@ export function ColorMenu({ editor, open, onOpenChange }: ColorMenuProps) {
           <IconTextColor color={activeText} />
         </button>
         {open === "text" && (
-          <div className={styles.colorMenuWide} role="menu">
-            <button
-              type="button"
-              className={styles.colorClear}
-              role="menuitem"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
+          <div className={styles.colorMenuAnchor}>
+            <ThemeColorPalette
+              activeColor={editor.getAttributes("textStyle").color as
+                | string
+                | undefined}
+              clearLabel={t("editor.colorAuto")}
+              onPick={pickText}
+              onClear={() => {
                 withSelection().unsetColor().run();
                 onOpenChange(null);
               }}
-            >
-              {t("editor.colorAuto")}
-            </button>
-            <div className={styles.colorSectionLabel}>{t("editor.colorTheme")}</div>
-            <div
-              className={styles.colorThemeGrid}
-              style={{
-                gridTemplateColumns: `repeat(${themeCols}, 1fr)`,
-                gridTemplateRows: `repeat(${themeRows}, 1fr)`,
-              }}
-            >
-              {Array.from({ length: themeRows }, (_, row) =>
-                THEME_COLOR_COLUMNS.map((col, colIdx) => {
-                  const value = col[row];
-                  return (
-                    <button
-                      key={`t-${colIdx}-${row}`}
-                      type="button"
-                      className={styles.swatch}
-                      role="menuitem"
-                      title={value}
-                      aria-label={value}
-                      style={{
-                        background: value,
-                        borderColor:
-                          value.toLowerCase() === "#ffffff"
-                            ? "var(--wg-border)"
-                            : undefined,
-                      }}
-                      data-active={
-                        editor.isActive("textStyle", { color: value }) ||
-                        undefined
-                      }
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => pickText(value)}
-                    />
-                  );
-                }),
-              ).flat()}
-            </div>
-            <div className={styles.colorSectionLabel}>
-              {t("editor.colorStandard")}
-            </div>
-            <div className={styles.colorStandardRow}>
-              {STANDARD_COLORS.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={styles.swatch}
-                  role="menuitem"
-                  title={value}
-                  aria-label={value}
-                  style={{ background: value }}
-                  data-active={
-                    editor.isActive("textStyle", { color: value }) || undefined
-                  }
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => pickText(value)}
-                />
-              ))}
-            </div>
+              preventMouseDownDefault
+            />
           </div>
         )}
       </div>

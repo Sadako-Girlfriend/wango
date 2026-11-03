@@ -14,16 +14,32 @@
 .body {
   flex: 1;
   min-height: 0;
-  display: grid;
-  /* 左栏保底宽度，避免工具栏按钮被挤成竖排字 */
-  grid-template-columns: minmax(300px, var(--wg-tree-width)) 1fr;
-  gap: 0;
-  /* 顶贴选项卡，去掉红框那条灰缝；左右下保留一点呼吸 */
+  display: flex;
+  align-items: stretch;
   padding: 0 10px 10px;
+  user-select: none;
+}
+
+.body:not([data-dragging]) {
+  user-select: auto;
+}
+
+.leftClip,
+.rightClip {
+  flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.body[data-ready]:not([data-dragging]) .leftClip,
+.body[data-ready]:not([data-dragging]) .rightClip {
+  transition: width var(--wg-motion-fast) var(--wg-ease-out);
 }
 
 .paneLeft,
-.paneRight {
+.paneMain,
+.paneAgent {
   background: var(--wg-bg-elevated);
   border: 1px solid var(--wg-border-subtle);
   border-radius: var(--wg-radius-md);
@@ -32,6 +48,87 @@
   overflow: hidden;
 }
 
-.paneLeft {
-  margin-right: 10px;
+.paneLeft,
+.paneAgent {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.body[data-tree-collapsed] .paneLeft,
+.body:not([data-agent-open]) .paneAgent {
+  pointer-events: none;
+}
+
+.paneMain {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.vSplit {
+  position: relative;
+  flex: 0 0 10px;
+  margin: 0 2px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 2;
+}
+
+.vSplit[data-collapsed] {
+  cursor: pointer;
+}
+
+.vSplit::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--wg-border-subtle);
+}
+
+.vSplit:hover::before,
+.vSplit[data-active]::before {
+  background: var(--wg-accent);
+  width: 2px;
+}
+
+.toggleBtn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: 999px;
+  background: var(--wg-bg-elevated);
+  color: var(--wg-text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.vSplit:hover .toggleBtn,
+.vSplit:focus-within .toggleBtn,
+.vSplit[data-collapsed] .toggleBtn,
+.toggleBtn:focus-visible {
+  opacity: 1;
+}
+
+.toggleBtn:hover {
+  color: var(--wg-accent);
+  border-color: color-mix(in srgb, var(--wg-accent) 40%, var(--wg-border));
+  background: var(--wg-accent-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body[data-ready]:not([data-dragging]) .leftClip,
+  .body[data-ready]:not([data-dragging]) .rightClip {
+    transition: none;
+  }
 }

@@ -5,7 +5,7 @@
 **本地优先**的树状架构 / 知识解构工作台。  
 用树拆结构，用富文本写细节，导出给人或 AI；可选接入兼容 OpenAI 的接口做「灵感」生成。
 
-当前版本 **0.3.37** · Windows 桌面端（Tauri）· [Apache-2.0](./LICENSE)
+当前版本 **0.3.39** · Windows 桌面端（Tauri）· [Apache-2.0](./LICENSE)
 
 <p align="center">
   <img src="docs/screenshots/02-workspace.png" alt="万构主界面：左侧树 + 右侧富文本" width="900" />
@@ -48,9 +48,29 @@
 
 ![树右键与优先级](docs/screenshots/04-tree-menu.png)
 
+### 从粘贴 / 从文件新建
+
+粘贴带序号的大纲，或导入 `.docx` / `.md`，预览后新开项目。
+
+| 从粘贴新建 | 从文件新建 |
+| :--- | :--- |
+| ![从粘贴新建](docs/screenshots/11-paste-import.png) | ![从文件新建](docs/screenshots/15-file-import.png) |
+
+### 词表
+
+左下词表库：引用 / 复制大纲为词条，正文扫链与绑定。
+
+![词表](docs/screenshots/12-glossary.png)
+
+### Agent（可选）
+
+全书上下文对话；改稿提案需确认后写入；多对话标签；输入框上方可「全部应用」。
+
+![Agent](docs/screenshots/16-agent.png)
+
 ### 导出
 
-Markdown（喂 AI）、PDF、思维导图、图文图片、另存完整 `.wango`。
+Markdown（喂 AI）、PDF、思维导图、图文图片、另存完整 `.wango`（可选包含 Agent 对话）。
 
 ![导出](docs/screenshots/05-export.png)
 
@@ -64,9 +84,13 @@ Markdown（喂 AI）、PDF、思维导图、图文图片、另存完整 `.wango`
 
 ![灵感](docs/screenshots/06-inspire.png)
 
-### 设置
+### 设置与效率
 
-语言、模型服务、导出目录等；关于页含版本信息。
+语言、模型服务、导出目录、**快捷键**；审查统计（F10）。
+
+| 快捷键 | 审查统计 |
+| :--- | :--- |
+| ![快捷键](docs/screenshots/13-hotkeys.png) | ![审查统计](docs/screenshots/14-content-stats.png) |
 
 ![设置](docs/screenshots/07-settings.png)
 
@@ -77,10 +101,13 @@ Markdown（喂 AI）、PDF、思维导图、图文图片、另存完整 `.wango`
 | 能力 | 说明 |
 |------|------|
 | 项目 | `.wango` ZIP · 打开 / 保存 / 另存 · 多标签 · 最近项目 · 单实例 |
-| 树 | 增删改、升降级、拖拽、搜索定位、优先级、文字标签 |
-| 正文 | TipTap 富文本 · 代码块 · 备注 · 图片 · 附件栏 |
-| 导出 | Markdown · 思维导图 PNG · 长图 PDF / 图片 · `.wango` 副本 |
-| AI | 灵感三模式（可选）· 密钥本机保存 |
+| 新建 | 从模板 · **从粘贴新建** · **从文件新建**（`.docx` / `.md`） |
+| 树 | 增删改、升降级、拖拽、搜索、优先级、标签、释放/解散子树 |
+| 词表 | 引用/复制为词条 · 扫链 · 黑名单 · 改名说明 |
+| 正文 | TipTap 富文本 · 代码块 · 备注 · 图片 · 行距 · 附件栏 |
+| 导出 | Markdown · Word · 思维导图 PNG · 长图 PDF / 图片 · `.wango` 副本 |
+| AI | **Agent** 改稿提案 · 灵感三模式 · 粘贴 AI 整理 · 密钥本机保存 |
+| 效率 | 可配置快捷键 · 审查统计（F10） · 已打开页签 |
 | 语言 | 中文 / English |
 
 更完整的说明：[功能说明.md](./功能说明.md) · [English features](./FEATURES.en.md)

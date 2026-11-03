@@ -1,0 +1,234 @@
+.root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--wg-bg-elevated);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--wg-border-subtle);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wg-text);
+}
+
+.addBtn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  background: var(--wg-bg);
+  color: var(--wg-text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addBtn:hover {
+  background: var(--wg-bg-muted);
+  color: var(--wg-text);
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 0 10px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 2px 10px 2px 8px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--wg-text);
+  font-size: 13px;
+}
+
+.row:hover {
+  background: var(--wg-bg-muted);
+}
+
+.row[data-selected] {
+  background: var(--wg-accent-soft);
+}
+
+.twist {
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: var(--wg-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.twistSpacer {
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.badge {
+  font-size: 10px;
+  color: var(--wg-text-secondary);
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: 3px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--wg-border) 70%, transparent);
+}
+
+.renameInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 1px 6px;
+  border: 1px solid var(--wg-accent);
+  border-radius: 4px;
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font: inherit;
+  line-height: 1.35;
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--wg-accent) 25%, transparent);
+}
+
+.row[data-renaming] {
+  background: color-mix(in srgb, var(--wg-accent-soft) 55%, var(--wg-bg));
+}
+
+.colorFlyout {
+  position: fixed;
+  z-index: 91;
+}
+
+.ctxMenu {
+  position: fixed;
+  z-index: 90;
+  min-width: 160px;
+  max-width: 240px;
+  padding: 4px;
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  box-shadow: var(--wg-shadow);
+}
+
+.ctxItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--wg-text);
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ctxItem:hover {
+  background: var(--wg-bg-muted);
+}
+
+.ctxItemDanger {
+  color: #b42318;
+}
+
+.ctxSep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--wg-border-subtle);
+}
+
+.confirmBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirmPanel {
+  width: min(360px, 92vw);
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow);
+  padding: 18px 18px 14px;
+}
+
+.confirmTitle {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.confirmBody {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--wg-text-secondary);
+  line-height: 1.5;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirmGhost,
+.confirmDanger {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--wg-radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.confirmGhost {
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg);
+  color: var(--wg-text);
+}
+
+.confirmDanger {
+  border: 1px solid #b42318;
+  background: #b42318;
+  color: #fff;
+}

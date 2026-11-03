@@ -18,10 +18,38 @@
   box-shadow: var(--wg-shadow);
 }
 
-.title {
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 4px;
+}
+
+.title {
+  margin: 0;
   font-size: 15px;
   font-weight: 700;
+}
+
+.glossaryOpt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--wg-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.glossaryOpt input {
+  margin: 0;
+  accent-color: var(--wg-accent);
+}
+
+.glossaryOpt:hover {
+  color: var(--wg-text);
 }
 
 .hint {

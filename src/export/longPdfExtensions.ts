@@ -14,6 +14,7 @@ import { Callout } from "@/editor/Callout";
 import { FancyCodeBlock } from "@/editor/FancyCodeBlock";
 import { FontSize } from "@/editor/FontSize";
 import { ResizableImage } from "@/editor/ResizableImage";
+import { GlossaryExportMark } from "./GlossaryExportMarkExt";
 
 export function createLongPdfExtensions() {
   return [
@@ -28,6 +29,7 @@ export function createLongPdfExtensions() {
     FontFamily,
     FontSize,
     Highlight.configure({ multicolor: true }),
+    GlossaryExportMark,
     Callout,
     ResizableImage.configure({ allowBase64: true }),
     Link.configure({

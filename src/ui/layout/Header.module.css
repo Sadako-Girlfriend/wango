@@ -69,6 +69,12 @@
   background: var(--wg-bg-muted);
 }
 
+.btn[data-active] {
+  border-color: color-mix(in srgb, var(--wg-accent) 45%, var(--wg-border));
+  background: var(--wg-accent-soft);
+  color: var(--wg-accent);
+}
+
 .btnPrimary {
   border-color: var(--wg-accent);
   background: var(--wg-accent);
@@ -117,6 +123,21 @@
 .menu > button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.menuHint {
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--wg-text-muted);
+}
+
+.menuItemAccent {
+  margin-top: 4px;
+  border-top: 1px solid var(--wg-border-subtle) !important;
+  border-radius: 0 0 var(--wg-radius-sm) var(--wg-radius-sm) !important;
+  font-weight: 600;
+  color: var(--wg-accent) !important;
 }
 
 .menuRow {

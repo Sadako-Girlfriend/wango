@@ -4,6 +4,36 @@ All notable user-facing changes are listed here.
 Format inspired by [Keep a Changelog](https://keepachangelog.com/).  
 版本号与 `package.json` / `src-tauri/tauri.conf.json` 一致。
 
+## 0.3.39 — 2026-11-04
+
+### Added
+- **Agent** side panel — full-project chat; proposal cards (confirm before write); thinking fold-out
+- Agent proposals: edit title/body, **add child** / glossary entry; **Apply all** with parent-before-child order
+- Agent **chat tabs** — new chat opens a tab; export can include all tabs
+- Review bar above composer (pending count · skip all · apply all), Cursor-style
+- **Other projects** always available while editing (open… + recent saved files)
+
+### Changed
+- App / `.wango` file icons use transparent rounded corners
+
+### Fixed
+- Applying Agent body on the open page now refreshes the editor (same-node external sync)
+- Agent chat embedded in `.wango` restores after file rename (path-key hydrate)
+
+## 0.3.38 — 2026-11-03
+
+### Added
+- **New from paste / New from file** — build a new project from clipboard (numbers / titles / AI) or `.docx` / `.md`
+- **Glossary** pane — reference or copy outline nodes as terms; links, blacklist, rename notes
+- **Configurable shortcuts** — Settings → Shortcuts (record, conflict check, reset); defaults include Alt+1/2/3 focus, tree arrows, F10 stats
+- **Content stats** (F10) — characters / punctuation / code / callouts by scope
+- Tree **release children** / **dissolve node**
+- Editor line height; cleaner Enter / paste HTML sanitize
+
+### Changed
+- Paste/file flows open a **new project tab** (not insert into the current tree)
+- Settings tabs: General / AI / **Shortcuts** / About
+
 ## 0.3.37 — 2026-11-01
 
 ### Fixed

@@ -1,0 +1,66 @@
+.root {
+  width: 248px;
+  padding: 8px;
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow);
+  box-sizing: border-box;
+}
+
+.clear {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-radius: var(--wg-radius-sm);
+  cursor: pointer;
+  color: var(--wg-text);
+  font-size: 12px;
+}
+
+.clear:hover {
+  background: var(--wg-bg-muted);
+}
+
+.sectionLabel {
+  margin: 6px 0 4px;
+  font-size: 11px;
+  color: var(--wg-text-muted);
+}
+
+.themeGrid {
+  display: grid;
+  gap: 2px;
+}
+
+.standardRow {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+}
+
+.swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 18px;
+  min-height: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.swatch:hover {
+  outline: 2px solid var(--wg-accent-soft);
+  outline-offset: 0;
+  z-index: 1;
+}
+
+.swatch[data-active] {
+  outline: 2px solid var(--wg-accent);
+  outline-offset: 0;
+  z-index: 1;
+}

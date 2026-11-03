@@ -308,10 +308,38 @@
 }
 
 .title {
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 48px;
+  /* 加高点击带，短标题也不用精瞄文字 */
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  margin: -2px 0;
+  border-radius: 3px;
+}
+
+.renameInput {
+  flex: 1 1 auto;
   min-width: 0;
+  max-width: 100%;
+  margin: 0 4px 0 0;
+  padding: 1px 6px;
+  border: 1px solid var(--wg-accent);
+  border-radius: 4px;
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font: inherit;
+  line-height: 1.35;
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--wg-accent) 25%, transparent);
+}
+
+.row[data-renaming] {
+  background: color-mix(in srgb, var(--wg-accent-soft) 55%, var(--wg-bg));
 }
 
 .prio {

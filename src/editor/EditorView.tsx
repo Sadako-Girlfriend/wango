@@ -9,8 +9,15 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import type { Node as PmNode } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
+import {
+  isManualLink,
+  occurrenceIndexBefore,
+  type GlossaryLink,
+} from "@/domain";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
@@ -28,12 +35,23 @@ import { t } from "@/i18n";
 import { useI18n } from "@/i18n/useI18n";
 import { safePartialMarkdown } from "@/ai/inspireProtocol";
 import { Callout } from "./Callout";
+import { CleanParagraphEnter } from "./CleanParagraphEnter";
 import { ColorMenu } from "./ColorMenu";
 import { FONT_OPTIONS, FONT_SIZES } from "./colorPalettes";
 import { FancyCodeBlock } from "./FancyCodeBlock";
 import { FontSize } from "./FontSize";
+import {
+  LINE_HEIGHT_PRESETS,
+  LineHeight,
+  normalizeLineHeight,
+} from "./LineHeight";
 import { ResizableImage } from "./ResizableImage";
 import { TrailingNode } from "./TrailingNode";
+import { GlossaryDecorations } from "./glossaryDecorations";
+import {
+  sanitizeMarkdownContent,
+  stripPasteHtml,
+} from "./sanitizeMarkdown";
 import {
   IconBold,
   IconBulletList,
@@ -60,6 +78,12 @@ export type WandCapture =
       language?: string | null;
     };
 
+/** 正文选区 → 词表绑定用（锚文字 + 第几次出现） */
+export type GlossaryEditorSelection = {
+  text: string;
+  occurrenceIndex: number;
+};
+
 export interface EditorHandle {
   insertImage: (src: string, alt?: string) => void;
   /** 文件名标题 + 代码块（拖入 txt/json/py 等） */
@@ -69,6 +93,8 @@ export interface EditorHandle {
   captureWandTarget: () => WandCapture;
   /** 将魔法棒结果写回捕获目标 */
   applyWandResult: (target: WandCapture, text: string) => void;
+  /** 当前选区（无选中或空串则 null） */
+  getGlossarySelection: () => GlossaryEditorSelection | null;
 }
 
 interface EditorViewProps {
@@ -77,9 +103,126 @@ interface EditorViewProps {
   onChange: (markdown: string) => void;
   /** 灵感流式外推：同节点 markdown 增长时打字机刷新 */
   contentStreaming?: boolean;
+  /** 当前节点上的词条链接（渲染层） */
+  glossaryLinks?: GlossaryLink[];
+  /** 词条自定义引用色（entryId → #rrggbb） */
+  glossaryColors?: Record<string, string>;
+  /** 词条展示名（悬浮眉题） */
+  glossaryTitles?: Record<string, string>;
+  /** 词条正文预览（悬浮主内容） */
+  glossaryBodies?: Record<string, string>;
+  /** @deprecated 改用 onGlossaryPeek / onGlossaryOpen */
+  onGlossaryEntryClick?: (entryId: string) => void;
+  /** 单击词条高亮：打开浮卡（可多绑多个 id） */
+  onGlossaryPeek?: (detail: {
+    entryIds: string[];
+    primaryId: string;
+    clientX: number;
+    clientY: number;
+  }) => void;
+  /** 双击词条高亮：进入词表编辑 */
+  onGlossaryOpen?: (entryId: string) => void;
+  /** 正文右键：绑定 / 建子词条 / 解绑 */
+  onBindGlossary?: (sel: GlossaryEditorSelection) => void;
+  onCreateGlossaryChild?: (sel: GlossaryEditorSelection) => void;
+  /** 解绑该选区/高亮上全部手动链 */
+  onUnbindGlossary?: (sel: GlossaryEditorSelection) => void;
+  /** 解绑单条手动链 */
+  onUnbindGlossaryLink?: (linkId: string) => void;
   onPickImage?: () => void;
   /** 拖入文件（含图片）时交给工作区分流，返回 true 表示已处理 */
   onDropFiles?: (files: File[]) => boolean | void | Promise<boolean | void>;
+}
+
+function pmPosToPlainOffset(doc: PmNode, pos: number): number {
+  let plain = 0;
+  let done = false;
+  doc.descendants((node, nodePos) => {
+    if (done) return false;
+    if (!node.isText || !node.text) return;
+    const end = nodePos + node.text.length;
+    if (pos <= nodePos) {
+      done = true;
+      return false;
+    }
+    if (pos >= end) {
+      plain += node.text.length;
+      return;
+    }
+    plain += pos - nodePos;
+    done = true;
+    return false;
+  });
+  return plain;
+}
+
+function readGlossarySelection(editor: Editor): GlossaryEditorSelection | null {
+  const { from, to, empty } = editor.state.selection;
+  if (empty || from === to) return null;
+  const plain = editor.state.doc.textContent;
+  const pFrom = pmPosToPlainOffset(editor.state.doc, from);
+  const pTo = pmPosToPlainOffset(editor.state.doc, to);
+  const raw = plain.slice(Math.min(pFrom, pTo), Math.max(pFrom, pTo));
+  const text = raw.trim();
+  if (!text) return null;
+  // trim 后按锚文字重算计次，与 bindGlossaryManual 一致
+  const lead = raw.length - raw.trimStart().length;
+  const occurrenceIndex = occurrenceIndexBefore(
+    plain,
+    text,
+    Math.min(pFrom, pTo) + lead,
+  );
+  return { text, occurrenceIndex };
+}
+
+function manualLinksForSelection(
+  links: GlossaryLink[],
+  hostNodeId: string,
+  text: string,
+  occurrenceIndex?: number,
+): GlossaryLink[] {
+  const needle = text.trim();
+  return links.filter((l) => {
+    if (l.hostNodeId !== hostNodeId) return false;
+    if (!isManualLink(l) || l.status !== "active") return false;
+    if ((l.anchorText || l.matchedText || "").trim() !== needle) return false;
+    // 有计次时只列这一处的绑定，避免同名别处的链混进来
+    if (
+      occurrenceIndex != null &&
+      l.occurrenceIndex != null &&
+      l.occurrenceIndex !== occurrenceIndex
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/** 从高亮 DOM 文案推回绑定用选区（第几次出现） */
+function selectionFromGlossaryText(
+  editor: Editor,
+  text: string,
+): GlossaryEditorSelection | null {
+  if (!text.trim()) return null;
+  const plain = editor.state.doc.textContent;
+  const { from } = editor.state.selection;
+  // 优先用当前光标附近；否则取第 0 次
+  const pFrom = pmPosToPlainOffset(editor.state.doc, from);
+  let idx = plain.indexOf(text);
+  let best = 0;
+  let n = 0;
+  let nearest = Number.POSITIVE_INFINITY;
+  while (idx >= 0) {
+    const d = Math.abs(idx - pFrom);
+    if (d < nearest) {
+      nearest = d;
+      best = n;
+    }
+    n += 1;
+    idx = plain.indexOf(text, idx + 1);
+  }
+  if (n === 0) return { text, occurrenceIndex: 0 };
+  return { text, occurrenceIndex: best };
 }
 
 type BlockKind = "paragraph" | "heading1" | "heading2";
@@ -131,22 +274,68 @@ function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
 
+/** 行距输入：允许数字与一个小数点 */
+function lineHeightDraftDigits(value: string): string {
+  let out = "";
+  let dot = false;
+  for (const ch of value) {
+    if (ch >= "0" && ch <= "9") out += ch;
+    else if (ch === "." && !dot) {
+      out += ".";
+      dot = true;
+    }
+  }
+  return out;
+}
+
+function applyLineHeight(
+  editor: Editor,
+  raw: string,
+  selection: TextRange | null,
+) {
+  const restore = () => {
+    let chain = editor.chain().focus();
+    if (selection) {
+      const docSize = editor.state.doc.content.size;
+      const from = Math.max(0, Math.min(selection.from, docSize));
+      const to = Math.max(0, Math.min(selection.to, docSize));
+      chain = chain.setTextSelection({ from, to });
+    }
+    return chain;
+  };
+
+  const n = raw.trim();
+  if (!n) {
+    restore().unsetLineHeight().run();
+    return;
+  }
+  const v = normalizeLineHeight(n);
+  if (!v) return;
+  restore().setLineHeight(v).run();
+}
+
+type MetricFilter = (raw: string) => string;
+
 /**
- * 字号：框内改数字，▾ 选预设。
- * 整控件 mousedown preventDefault，不抢编辑器焦点，正文选区保持可见。
+ * 字号 / 行距共用壳：保正文选区 + 假光标；按键监听常挂，避免点进框后等 effect 才有响应。
  */
-function FontSizeInput({
+function MetricCombobox({
   editor,
   label,
   defaultLabel,
+  fromEditor,
+  presets,
+  filterDraft,
+  applyValue,
 }: {
   editor: Editor;
   label: string;
   defaultLabel: string;
+  fromEditor: string;
+  presets: readonly string[];
+  filterDraft: MetricFilter;
+  applyValue: (raw: string, selection: TextRange | null) => void;
 }) {
-  const fromEditor = normalizeSizeAttr(
-    editor.getAttributes("textStyle").fontSize as string | undefined,
-  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState(fromEditor);
@@ -154,6 +343,14 @@ function FontSizeInput({
   const savedSelection = useRef<TextRange | null>(null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const typingRef = useRef(typing);
+  typingRef.current = typing;
+  const fromEditorRef = useRef(fromEditor);
+  fromEditorRef.current = fromEditor;
+  const applyRef = useRef(applyValue);
+  applyRef.current = applyValue;
+  const filterRef = useRef(filterDraft);
+  filterRef.current = filterDraft;
 
   const captureSelection = () => {
     const { from, to } = editor.state.selection;
@@ -165,33 +362,33 @@ function FontSizeInput({
     setDraft(fromEditor);
   }, [fromEditor, typing]);
 
+  // 外侧点击：关菜单 / 提交
   useEffect(() => {
-    if (!menuOpen && !typing) return;
     const onDoc = (e: MouseEvent) => {
       if (wrapRef.current?.contains(e.target as Node)) return;
       setMenuOpen(false);
-      if (typing) {
-        applyFontSize(editor, draftRef.current, savedSelection.current);
-        setTyping(false);
-      }
+      if (!typingRef.current) return;
+      applyRef.current(draftRef.current, savedSelection.current);
+      setTyping(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, [menuOpen, typing, editor]);
+  }, []);
 
+  // 按键常挂：用 typingRef 判断，点进框立刻可输入（无 useEffect 一帧延迟）
   useEffect(() => {
-    if (!typing) return;
     const onKey = (e: KeyboardEvent) => {
+      if (!typingRef.current) return;
       if (e.key === "Enter") {
         e.preventDefault();
-        applyFontSize(editor, draftRef.current, savedSelection.current);
+        applyRef.current(draftRef.current, savedSelection.current);
         setTyping(false);
         setMenuOpen(false);
         return;
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        setDraft(fromEditor);
+        setDraft(fromEditorRef.current);
         setTyping(false);
         setMenuOpen(false);
         return;
@@ -206,37 +403,28 @@ function FontSizeInput({
         setMenuOpen(true);
         return;
       }
-      if (e.key.length === 1 && /\d/.test(e.key) && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        setDraft((d) => digitsOnly(d + e.key));
-        return;
-      }
-      // 拦截其它可打印字符，避免打进正文
       if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
+        setDraft((d) => filterRef.current(d + e.key));
       }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [typing, editor, fromEditor]);
+  }, []);
 
   const pickPreset = (v: string) => {
     setMenuOpen(false);
     setTyping(false);
-    if (!v) {
-      setDraft("");
-      applyFontSize(editor, "", savedSelection.current);
-      return;
-    }
     setDraft(v);
-    applyFontSize(editor, v, savedSelection.current);
+    applyRef.current(v, savedSelection.current);
   };
 
   const beginType = () => {
     captureSelection();
     setMenuOpen(false);
     setTyping(true);
-    setDraft(fromEditor);
+    // 清空草稿：下一键即替换（像选中全框），光标也更明显
+    setDraft("");
   };
 
   return (
@@ -245,7 +433,6 @@ function FontSizeInput({
       ref={wrapRef}
       data-typing={typing || undefined}
       onMouseDown={(e) => {
-        // 禁止抢焦点，正文选区高亮不消失
         e.preventDefault();
         captureSelection();
       }}
@@ -255,13 +442,21 @@ function FontSizeInput({
         className={styles.sizeComboboxInput}
         aria-label={label}
         title={label}
-        data-placeholder={!draft ? defaultLabel : undefined}
         onMouseDown={(e) => {
           e.preventDefault();
           beginType();
         }}
       >
-        {draft || <span className={styles.sizePlaceholder}>{defaultLabel}</span>}
+        {typing ? (
+          <>
+            <span className={styles.sizeDraft}>{draft}</span>
+            <span className={styles.sizeCaretFake} aria-hidden />
+          </>
+        ) : draft ? (
+          <span className={styles.sizeDraft}>{draft}</span>
+        ) : (
+          <span className={styles.sizePlaceholder}>{defaultLabel}</span>
+        )}
       </button>
       <button
         type="button"
@@ -278,7 +473,7 @@ function FontSizeInput({
       >
         ▾
       </button>
-      {menuOpen && (
+      {menuOpen ? (
         <div className={styles.sizeMenu} role="listbox">
           <button
             type="button"
@@ -291,7 +486,7 @@ function FontSizeInput({
           >
             {defaultLabel}
           </button>
-          {FONT_SIZES.map((s) => (
+          {presets.map((s) => (
             <button
               key={s}
               type="button"
@@ -307,25 +502,112 @@ function FontSizeInput({
             </button>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
+  );
+}
+
+function FontSizeInput({
+  editor,
+  label,
+  defaultLabel,
+}: {
+  editor: Editor;
+  label: string;
+  defaultLabel: string;
+}) {
+  const fromEditor = normalizeSizeAttr(
+    editor.getAttributes("textStyle").fontSize as string | undefined,
+  );
+  return (
+    <MetricCombobox
+      editor={editor}
+      label={label}
+      defaultLabel={defaultLabel}
+      fromEditor={fromEditor}
+      presets={FONT_SIZES}
+      filterDraft={digitsOnly}
+      applyValue={(raw, sel) => applyFontSize(editor, raw, sel)}
+    />
+  );
+}
+
+function LineHeightInput({
+  editor,
+  label,
+  defaultLabel,
+}: {
+  editor: Editor;
+  label: string;
+  defaultLabel: string;
+}) {
+  const fromEditor =
+    normalizeLineHeight(
+      editor.getAttributes("paragraph").lineHeight as string | undefined,
+    ) ?? "";
+  return (
+    <MetricCombobox
+      editor={editor}
+      label={label}
+      defaultLabel={defaultLabel}
+      fromEditor={fromEditor}
+      presets={LINE_HEIGHT_PRESETS}
+      filterDraft={lineHeightDraftDigits}
+      applyValue={(raw, sel) => applyLineHeight(editor, raw, sel)}
+    />
   );
 }
 
 export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
   function EditorView(
-    { nodeId, markdown, onChange, contentStreaming, onPickImage, onDropFiles },
+    {
+      nodeId,
+      markdown,
+      onChange,
+      contentStreaming,
+      glossaryLinks = [],
+      glossaryColors,
+      glossaryTitles,
+      glossaryBodies,
+      onGlossaryEntryClick,
+      onGlossaryPeek,
+      onGlossaryOpen,
+      onBindGlossary,
+      onCreateGlossaryChild,
+      onUnbindGlossary,
+      onUnbindGlossaryLink,
+      onPickImage,
+      onDropFiles,
+    },
     ref,
   ) {
     const { t: tr, locale } = useI18n();
     const [colorMenu, setColorMenu] = useState<"text" | "highlight" | null>(
       null,
     );
+    const [ctxMenu, setCtxMenu] = useState<{
+      x: number;
+      y: number;
+      sel: GlossaryEditorSelection;
+      /** 右键点在已绑定高亮上 */
+      onBoundLink: boolean;
+      entryId?: string | null;
+    } | null>(null);
+    const [hoverTip, setHoverTip] = useState<{
+      x: number;
+      y: number;
+      text: string;
+    } | null>(null);
     /** 点工具栏前记下正文选区，避免下拉/输入抢焦点后丢选中 */
     const toolbarSelection = useRef<TextRange | null>(null);
     const applyingRef = useRef(false);
     /** 节点切换加载世代，避免慢异步 setContent 冲掉用户刚插入的内容 */
     const loadGenRef = useRef(0);
+    /**
+     * 最近一次写入 store / 从 store 灌入编辑器的 markdown。
+     * 用于区分「用户输入回环」与「外部写入」（Agent 应用、撤销等）。
+     */
+    const emittedMarkdownRef = useRef(markdown);
     const onDropFilesRef = useRef(onDropFiles);
     onDropFilesRef.current = onDropFiles;
     const markdownRef = useRef(markdown);
@@ -340,6 +622,8 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
           // 改用带语言/复制/行号的深色代码块
           codeBlock: false,
         }),
+        // 段落行距：挂 paragraph attrs（须在 StarterKit paragraph 之后）
+        LineHeight,
         FancyCodeBlock,
         Underline,
         TextStyle,
@@ -355,6 +639,8 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
           openOnClick: false,
           HTMLAttributes: { class: "wg-link" },
         }),
+        GlossaryDecorations,
+        CleanParagraphEnter,
         Markdown.configure({
           html: true,
           transformPastedText: true,
@@ -363,6 +649,8 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
       ],
       content: "",
       editorProps: {
+        // 外站粘贴：剥 span/style，避免写进正文再导出成脏 HTML
+        transformPastedHTML: (html) => stripPasteHtml(html),
         handleDrop: (_view, event) => {
           const files = event.dataTransfer?.files;
           if (!files?.length || !onDropFilesRef.current) return false;
@@ -387,7 +675,9 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
           markdown?: { getMarkdown: () => string };
         };
         const md = storage.markdown?.getMarkdown() ?? ed.getText();
-        onChange(rewriteMarkdownForStorage(md));
+        const stored = rewriteMarkdownForStorage(sanitizeMarkdownContent(md));
+        emittedMarkdownRef.current = stored;
+        onChange(stored);
       },
       editable: !contentStreaming,
     });
@@ -427,6 +717,8 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
       focus: () => {
         editor?.chain().focus().run();
       },
+      getGlossarySelection: () =>
+        editor ? readGlossarySelection(editor) : null,
       captureWandTarget: () => {
         if (!editor) return { kind: "node", current: "" };
         const storage = editor.storage as {
@@ -492,7 +784,9 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
             markdown?: { getMarkdown: () => string };
           };
           const md = storage.markdown?.getMarkdown() ?? editor.getText();
-          onChange(rewriteMarkdownForStorage(md));
+          const stored = rewriteMarkdownForStorage(sanitizeMarkdownContent(md));
+          emittedMarkdownRef.current = stored;
+          onChange(stored);
         };
 
         /**
@@ -570,6 +864,7 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
       if (!editor) return;
       const gen = ++loadGenRef.current;
       const snapshot = markdownRef.current;
+      emittedMarkdownRef.current = snapshot;
       let cancelled = false;
 
       (async () => {
@@ -588,6 +883,29 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nodeId, editor]);
+
+    /** 同节点外部改稿（Agent 应用等）：store 变了但 nodeId 未变，需灌回编辑器 */
+    useEffect(() => {
+      if (!editor || contentStreaming) return;
+      if (markdown === emittedMarkdownRef.current) return;
+      const gen = ++loadGenRef.current;
+      const snapshot = markdown;
+      emittedMarkdownRef.current = snapshot;
+      let cancelled = false;
+      (async () => {
+        applyingRef.current = true;
+        try {
+          const display = await rewriteMarkdownForDisplay(snapshot);
+          if (cancelled || gen !== loadGenRef.current) return;
+          editor.commands.setContent(display || "", false);
+        } finally {
+          if (gen === loadGenRef.current) applyingRef.current = false;
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [markdown, editor, contentStreaming]);
 
     useEffect(() => {
       editor?.setEditable(!contentStreaming);
@@ -642,6 +960,139 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
       };
     }, [editor, contentStreaming, markdown, nodeId]);
 
+    useEffect(() => {
+      if (!editor) return;
+      editor.commands.setGlossaryLinks(
+        glossaryLinks,
+        nodeId,
+        glossaryColors,
+        glossaryTitles,
+        glossaryBodies,
+      );
+    }, [
+      editor,
+      glossaryLinks,
+      glossaryColors,
+      glossaryTitles,
+      glossaryBodies,
+      nodeId,
+    ]);
+
+    useEffect(() => {
+      if (!editor) return;
+      const dom = editor.view.dom;
+      const onClick = (e: Event) => {
+        const ce = e as CustomEvent<{
+          entryIds?: string[];
+          primaryId?: string;
+          entryId?: string;
+          clientX?: number;
+          clientY?: number;
+        }>;
+        const primaryId = ce.detail?.primaryId || ce.detail?.entryId;
+        const entryIds =
+          ce.detail?.entryIds?.length
+            ? ce.detail.entryIds
+            : primaryId
+              ? [primaryId]
+              : [];
+        if (!entryIds.length || !primaryId) return;
+        setHoverTip(null);
+        if (onGlossaryPeek) {
+          onGlossaryPeek({
+            entryIds,
+            primaryId,
+            clientX: ce.detail?.clientX ?? 120,
+            clientY: ce.detail?.clientY ?? 120,
+          });
+          return;
+        }
+        onGlossaryEntryClick?.(primaryId);
+      };
+      const onDbl = (e: Event) => {
+        const ce = e as CustomEvent<{
+          primaryId?: string;
+          entryId?: string;
+        }>;
+        const id = ce.detail?.primaryId || ce.detail?.entryId;
+        if (!id) return;
+        setHoverTip(null);
+        if (onGlossaryOpen) onGlossaryOpen(id);
+        else onGlossaryEntryClick?.(id);
+      };
+      dom.addEventListener("wg-glossary-click", onClick as EventListener);
+      dom.addEventListener("wg-glossary-dblclick", onDbl as EventListener);
+      return () => {
+        dom.removeEventListener("wg-glossary-click", onClick as EventListener);
+        dom.removeEventListener(
+          "wg-glossary-dblclick",
+          onDbl as EventListener,
+        );
+      };
+    }, [editor, onGlossaryEntryClick, onGlossaryPeek, onGlossaryOpen]);
+
+    useEffect(() => {
+      if (!editor) return;
+      const dom = editor.view.dom;
+      const onCtx = (e: Event) => {
+        const ce = e as CustomEvent<{
+          clientX: number;
+          clientY: number;
+          entryId: string | null;
+          text: string;
+        }>;
+        const text = (ce.detail?.text || "").trim();
+        if (!text) return;
+        setHoverTip(null);
+        const sel =
+          selectionFromGlossaryText(editor, text) ??
+          ({ text, occurrenceIndex: 0 } satisfies GlossaryEditorSelection);
+        setCtxMenu({
+          x: ce.detail.clientX,
+          y: ce.detail.clientY,
+          sel,
+          onBoundLink: true,
+          entryId: ce.detail.entryId,
+        });
+      };
+      dom.addEventListener("wg-glossary-contextmenu", onCtx as EventListener);
+      return () =>
+        dom.removeEventListener(
+          "wg-glossary-contextmenu",
+          onCtx as EventListener,
+        );
+    }, [editor]);
+
+    useEffect(() => {
+      if (!editor) return;
+      const dom = editor.view.dom;
+      const onMove = (e: MouseEvent) => {
+        const t = e.target;
+        if (!(t instanceof HTMLElement)) {
+          setHoverTip(null);
+          return;
+        }
+        const el = t.closest(".wg-glossary-link");
+        if (!(el instanceof HTMLElement)) {
+          setHoverTip(null);
+          return;
+        }
+        const tip = el.getAttribute("data-glossary-tip");
+        if (!tip) {
+          setHoverTip(null);
+          return;
+        }
+        setHoverTip({ x: e.clientX + 12, y: e.clientY + 16, text: tip });
+      };
+      const onLeave = () => setHoverTip(null);
+      dom.addEventListener("mousemove", onMove);
+      dom.addEventListener("mouseleave", onLeave);
+      return () => {
+        dom.removeEventListener("mousemove", onMove);
+        dom.removeEventListener("mouseleave", onLeave);
+      };
+    }, [editor]);
+
     const wasStreamingRef = useRef(false);
     useEffect(() => {
       if (!editor) return;
@@ -655,6 +1106,7 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
       // 流结束：完整 markdown + 附件 URL 改写再灌一次
       const gen = ++loadGenRef.current;
       const snapshot = markdownRef.current;
+      emittedMarkdownRef.current = snapshot;
       let cancelled = false;
       (async () => {
         applyingRef.current = true;
@@ -758,6 +1210,11 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
             editor={editor}
             label={tr("editor.fontSize")}
             defaultLabel={tr("editor.fontSizeDefault")}
+          />
+          <LineHeightInput
+            editor={editor}
+            label={tr("editor.lineHeight")}
+            defaultLabel={tr("editor.lineHeightDefault")}
           />
 
           <span className={styles.sep} />
@@ -907,7 +1364,186 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
             <IconUndo />
           </button>
         </div>
-        <EditorContent editor={editor} className={styles.content} />
+        <div
+          className={styles.content}
+          onContextMenu={(e) => {
+            if (
+              !onBindGlossary &&
+              !onCreateGlossaryChild &&
+              !onUnbindGlossary
+            ) {
+              return;
+            }
+            // 已绑定高亮由插件派发 wg-glossary-contextmenu，这里只处理普通选区
+            const t = e.target;
+            if (t instanceof HTMLElement && t.closest(".wg-glossary-link")) {
+              return;
+            }
+            const sel = readGlossarySelection(editor);
+            if (!sel) return;
+            e.preventDefault();
+            setHoverTip(null);
+            setCtxMenu({
+              x: e.clientX,
+              y: e.clientY,
+              sel,
+              onBoundLink: false,
+            });
+          }}
+        >
+          <EditorContent editor={editor} className={styles.contentInner} />
+        </div>
+        {hoverTip && !ctxMenu
+          ? createPortal(
+              <div
+                className={styles.glossaryTip}
+                style={{ left: hoverTip.x, top: hoverTip.y }}
+                role="tooltip"
+              >
+                {hoverTip.text.split("\n\n· · ·\n\n").map((block, i) => {
+                  const nl = block.indexOf("\n");
+                  const head = nl >= 0 ? block.slice(0, nl) : "";
+                  const body = nl >= 0 ? block.slice(nl + 1) : block;
+                  return (
+                    <div key={i} className={styles.glossaryTipBlock}>
+                      {head ? (
+                        <div className={styles.glossaryTipTitle}>{head}</div>
+                      ) : null}
+                      <div className={styles.glossaryTipBody}>{body}</div>
+                    </div>
+                  );
+                })}
+              </div>,
+              document.body,
+            )
+          : null}
+        {ctxMenu
+          ? createPortal(
+              <>
+                <div
+                  className={styles.ctxBackdrop}
+                  onClick={() => setCtxMenu(null)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setCtxMenu(null);
+                  }}
+                />
+                <div
+                  className={styles.ctxMenu}
+                  style={{ left: ctxMenu.x, top: ctxMenu.y }}
+                  role="menu"
+                >
+                  {ctxMenu.onBoundLink && ctxMenu.sel.text ? (
+                    <div className={styles.ctxHint} title={ctxMenu.sel.text}>
+                      {ctxMenu.sel.text.length > 24
+                        ? `${ctxMenu.sel.text.slice(0, 24)}…`
+                        : ctxMenu.sel.text}
+                    </div>
+                  ) : null}
+                  {onBindGlossary ? (
+                    <button
+                      type="button"
+                      className={styles.ctxItem}
+                      role="menuitem"
+                      onClick={() => {
+                        onBindGlossary(ctxMenu.sel);
+                        setCtxMenu(null);
+                      }}
+                    >
+                      {ctxMenu.onBoundLink
+                        ? tr("glossary.editorBindMore")
+                        : tr("glossary.editorBind")}
+                    </button>
+                  ) : null}
+                  {!ctxMenu.onBoundLink && onCreateGlossaryChild ? (
+                    <button
+                      type="button"
+                      className={styles.ctxItem}
+                      role="menuitem"
+                      onClick={() => {
+                        onCreateGlossaryChild(ctxMenu.sel);
+                        setCtxMenu(null);
+                      }}
+                    >
+                      {tr("glossary.editorCreateChild")}
+                    </button>
+                  ) : null}
+                  {(() => {
+                    const bound = manualLinksForSelection(
+                      glossaryLinks,
+                      nodeId,
+                      ctxMenu.sel.text,
+                      ctxMenu.sel.occurrenceIndex,
+                    );
+                    if (!bound.length) return null;
+                    const canOne = Boolean(onUnbindGlossaryLink);
+                    const canAll = Boolean(onUnbindGlossary);
+                    if (!canOne && !canAll) return null;
+                    return (
+                      <>
+                        <div className={styles.ctxSep} />
+                        <div className={styles.ctxSubHead}>
+                          {tr("glossary.editorBoundList")}
+                        </div>
+                        {bound.map((l) => {
+                          const title =
+                            glossaryTitles?.[l.entryId]?.trim() ||
+                            l.matchedText ||
+                            l.entryId;
+                          return (
+                            <div key={l.id} className={styles.ctxBoundRow}>
+                              <span className={styles.ctxBoundName} title={title}>
+                                {title}
+                              </span>
+                              {canOne ? (
+                                <button
+                                  type="button"
+                                  className={styles.ctxBoundUnbind}
+                                  onClick={() => {
+                                    onUnbindGlossaryLink?.(l.id);
+                                    setCtxMenu(null);
+                                  }}
+                                >
+                                  {tr("glossary.editorUnbindOne")}
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                        {canAll && bound.length > 1 ? (
+                          <button
+                            type="button"
+                            className={styles.ctxItem}
+                            role="menuitem"
+                            onClick={() => {
+                              onUnbindGlossary?.(ctxMenu.sel);
+                              setCtxMenu(null);
+                            }}
+                          >
+                            {tr("glossary.editorUnbindAll")}
+                          </button>
+                        ) : null}
+                        {canAll && bound.length === 1 && !canOne ? (
+                          <button
+                            type="button"
+                            className={styles.ctxItem}
+                            role="menuitem"
+                            onClick={() => {
+                              onUnbindGlossary?.(ctxMenu.sel);
+                              setCtxMenu(null);
+                            }}
+                          >
+                            {tr("glossary.editorUnbind")}
+                          </button>
+                        ) : null}
+                      </>
+                    );
+                  })()}
+                </div>
+              </>,
+              document.body,
+            )
+          : null}
       </div>
     );
   },

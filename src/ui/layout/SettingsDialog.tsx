@@ -3,14 +3,17 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { AppSettings } from "@/desktop/appSettings";
 import { isTauriRuntime } from "@/desktop/draftStore";
 import { WANGO_PHILOSOPHY } from "@/content/wangoPhilosophy";
+import { mergeHotkeys, type HotkeyMap } from "@/hotkeys";
 import { setLocale, type Locale } from "@/i18n";
 import { useI18n } from "@/i18n/useI18n";
+import { HotkeysSettingsPanel } from "./HotkeysSettingsPanel";
 import styles from "./SettingsDialog.module.css";
 
-export type SettingsTab = "general" | "ai" | "about";
+export type SettingsTab = "general" | "ai" | "hotkeys" | "about";
 
 export interface SettingsDraft {
   locale: Locale;
@@ -19,6 +22,7 @@ export interface SettingsDraft {
   model: string;
   hideExportWatermark: boolean;
   defaultExportDir: string;
+  hotkeys: HotkeyMap;
 }
 
 interface SettingsDialogProps {
@@ -27,7 +31,7 @@ interface SettingsDialogProps {
   onCancel: () => void;
 }
 
-const APP_VERSION = "0.3.35";
+const APP_VERSION = "0.3.39";
 
 export function SettingsDialog({
   initial,
@@ -46,6 +50,9 @@ export function SettingsDialog({
   );
   const [defaultExportDir, setDefaultExportDir] = useState(
     initial.defaultExportDir,
+  );
+  const [hotkeys, setHotkeys] = useState<HotkeyMap>(() =>
+    mergeHotkeys(initial.hotkeys),
   );
   const [saving, setSaving] = useState(false);
 
@@ -94,13 +101,14 @@ export function SettingsDialog({
         model,
         hideExportWatermark,
         defaultExportDir,
+        hotkeys,
       });
     } finally {
       setSaving(false);
     }
   };
 
-  return (
+  return createPortal(
     <div className={styles.backdrop} role="presentation" onClick={cancel}>
       <div
         className={styles.panel}
@@ -119,6 +127,7 @@ export function SettingsDialog({
               [
                 ["general", "settings.tabGeneral"],
                 ["ai", "settings.tabAi"],
+                ["hotkeys", "settings.tabHotkeys"],
                 ["about", "settings.tabAbout"],
               ] as const
             ).map(([id, key]) => (
@@ -251,6 +260,10 @@ export function SettingsDialog({
               </section>
             )}
 
+            {tab === "hotkeys" && (
+              <HotkeysSettingsPanel value={hotkeys} onChange={setHotkeys} />
+            )}
+
             {tab === "about" && (
               <section className={styles.about}>
                 <div className={styles.aboutHead}>
@@ -323,6 +336,7 @@ export function SettingsDialog({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

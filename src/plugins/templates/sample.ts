@@ -22,12 +22,16 @@ function buildSample(): ProjectData {
   return {
     name: SAMPLE_GUIDE_SEED.name,
     tree: SAMPLE_GUIDE_SEED.tree.map(fromSeed),
+    // 词表字段与空项目对齐；旧模板缺省时由 ensureProjectName / migrate 补全
+    glossary: [],
+    glossaryLinks: [],
+    glossaryLogs: [],
   };
 }
 
 export const sampleTemplate: WanGouPlugin = {
   id: "template.sample",
   name: "使用指南（示例）",
-  description: "讲解树操作，并演示常用富文本",
+  description: "树、正文、词表、Agent、导出与上手清单",
   getInitialData: buildSample,
 };

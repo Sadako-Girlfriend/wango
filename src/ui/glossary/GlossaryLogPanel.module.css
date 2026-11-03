@@ -1,0 +1,298 @@
+.panel {
+  position: fixed;
+  z-index: 120;
+  width: min(420px, 92vw);
+  height: min(560px, 86vh);
+  display: flex;
+  flex-direction: column;
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--wg-border-subtle);
+  cursor: move;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.headTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.closeBtn {
+  border: none;
+  background: transparent;
+  color: var(--wg-text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.toolbar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--wg-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.search {
+  height: 32px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  padding: 0 10px;
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font-size: 13px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg);
+  color: var(--wg-text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.chip[data-active] {
+  background: var(--wg-accent-soft);
+  border-color: var(--wg-accent);
+  color: var(--wg-text);
+}
+
+.hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--wg-text-secondary);
+}
+
+.dates {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dates input {
+  flex: 1;
+  height: 28px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  padding: 0 6px;
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font-size: 12px;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px;
+}
+
+.card {
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: var(--wg-radius-sm);
+  padding: 10px;
+  margin-bottom: 8px;
+  background: var(--wg-bg);
+  border-left: 3px solid var(--wg-accent);
+}
+
+/* 失效类：让位 / 移除 / 撤销 / 拦截 — 弱化整卡，和有效引用一眼区分 */
+.card[data-inactive] {
+  opacity: 0.78;
+  background: color-mix(in srgb, var(--wg-bg-muted) 55%, var(--wg-bg));
+  border-left-color: #98a2b3;
+}
+
+.card[data-status="yielded"] {
+  border-left-color: #f79009;
+  background: color-mix(in srgb, #f79009 8%, var(--wg-bg));
+}
+
+.card[data-status="blocked"] {
+  border-left-color: #f04438;
+  background: color-mix(in srgb, #f04438 7%, var(--wg-bg));
+}
+
+.card[data-status="removed"],
+.card[data-status="revoked"] {
+  border-left-color: #98a2b3;
+}
+
+.card[data-status="modified"] {
+  border-left-color: #7a5af8;
+}
+
+.cardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.headLeft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--wg-border);
+  color: var(--wg-text-secondary);
+  background: var(--wg-bg-muted);
+}
+
+.card[data-status="yielded"] .statusBadge {
+  color: #b54708;
+  border-color: color-mix(in srgb, #f79009 45%, var(--wg-border));
+  background: color-mix(in srgb, #f79009 14%, var(--wg-bg));
+}
+
+.card[data-status="blocked"] .statusBadge {
+  color: #b42318;
+  border-color: color-mix(in srgb, #f04438 40%, var(--wg-border));
+  background: color-mix(in srgb, #f04438 12%, var(--wg-bg));
+}
+
+.card[data-status="active"] .statusBadge {
+  color: var(--wg-accent);
+  border-color: color-mix(in srgb, var(--wg-accent) 40%, var(--wg-border));
+  background: var(--wg-accent-soft);
+}
+
+/* 改名备注：旧名留下 vs 改名后新建 */
+.renameNote {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+
+.renameNote[data-kind="legacy"] {
+  color: #b54708;
+  border-color: color-mix(in srgb, #f79009 40%, var(--wg-border));
+  background: color-mix(in srgb, #f79009 12%, var(--wg-bg));
+}
+
+.renameNote[data-kind="after"] {
+  color: #027a48;
+  border-color: color-mix(in srgb, #12b76a 40%, var(--wg-border));
+  background: color-mix(in srgb, #12b76a 12%, var(--wg-bg));
+}
+
+.jump {
+  border: none;
+  background: none;
+  color: var(--wg-accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  text-align: left;
+}
+
+.card[data-inactive] .jump {
+  color: var(--wg-text-secondary);
+}
+
+.snippet {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--wg-text);
+  margin: 4px 0 8px;
+  word-break: break-word;
+}
+
+/* 失效原句划掉，表示此链已不生效 */
+.card[data-inactive] .snippet {
+  color: var(--wg-text-secondary);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--wg-text-secondary) 55%, transparent);
+}
+
+.diffNew {
+  color: #b42318;
+  font-weight: 600;
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--wg-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.action {
+  border: none;
+  background: transparent;
+  color: var(--wg-accent);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0;
+}
+
+.empty {
+  text-align: center;
+  color: var(--wg-text-secondary);
+  font-size: 13px;
+  padding: 24px 8px;
+}
+
+.foot {
+  flex-shrink: 0;
+  border-top: 1px solid var(--wg-border-subtle);
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--wg-text-secondary);
+}
+
+.exportBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  cursor: pointer;
+  font-size: 12px;
+}

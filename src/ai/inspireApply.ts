@@ -10,15 +10,34 @@ import {
   type InspireEvent,
 } from "./inspireProtocol";
 
+export type InspireApplyOptions = {
+  /**
+   * 流式根节点挂到此父节点下（合并进当前树）。
+   * 未设则与原先一致：parentId 缺失时挂到 tab 根级。
+   */
+  mountParentId?: string | null;
+  /** 为 true 时忽略 project 改名（粘贴导入不改当前项目名） */
+  skipProjectRename?: boolean;
+};
+
 export class InspireSessionApplier {
   private readonly idMap = new Map<string, string>();
+  private readonly mountParentId: string | null | undefined;
+  private readonly skipProjectRename: boolean;
 
-  constructor(private readonly tabId: string) {}
+  constructor(
+    private readonly tabId: string,
+    options?: InspireApplyOptions,
+  ) {
+    this.mountParentId = options?.mountParentId;
+    this.skipProjectRename = Boolean(options?.skipProjectRename);
+  }
 
   apply(ev: InspireEvent): void {
     const store = useSessionStore.getState();
     switch (ev.type) {
       case "project": {
+        if (this.skipProjectRename) break;
         const name = ev.name.trim();
         if (name) store.renameTabProject(this.tabId, name);
         break;
@@ -29,6 +48,8 @@ export class InspireSessionApplier {
         let parentReal: string | null = null;
         if (ev.parentId) {
           parentReal = this.idMap.get(ev.parentId) ?? null;
+        } else if (this.mountParentId !== undefined) {
+          parentReal = this.mountParentId;
         }
         store.addInspireNode(this.tabId, {
           node: createNode({

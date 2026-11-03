@@ -183,3 +183,36 @@ export async function* inspireOutlineOnlyStream(
     options,
   );
 }
+
+/** 杂乱粘贴 → 流式整理进树（调用方挂到导入根下） */
+export async function* inspireFromPasteStream(
+  rawText: string,
+  options?: InspireStreamOptions,
+): AsyncGenerator<InspireEvent, void, undefined> {
+  const q = rawText.trim();
+  if (!q) {
+    yield { type: "error", message: "Empty paste" };
+    return;
+  }
+  const clipped = q.length > 12000 ? `${q.slice(0, 12000)}\n…` : q;
+  const user = `The user pasted messy notes / fragments. Organize into a WanGou outline via NDJSON protocol.
+Rules:
+- Preserve facts and key points; restructure and polish wording OK
+- Do NOT invent key data, numbers, names, or conclusions absent from the paste
+- Prefer ≤ ~40 nodes; depth-first: for EACH node emit "node" then stream Markdown via "delta", then next node
+- Optional priority sparingly; no free-text labels
+- Emit a short "project" name summarizing the paste; end with done
+
+Paste:
+${clipped}`;
+
+  yield* runSerialized(
+    streamWithFallback({
+      system: INSPIRE_STREAM_PROTOCOL_PROMPT,
+      user,
+      temperature: 0.55,
+      signal: options?.signal,
+    }),
+    options,
+  );
+}

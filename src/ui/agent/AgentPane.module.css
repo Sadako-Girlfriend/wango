@@ -1,0 +1,491 @@
+/* Agent 侧栏：贴近 Cursor 对话面板——扁平底栏、编辑器式标签、输入框一体 */
+
+.root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--wg-bg);
+}
+
+.top {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--wg-border-subtle);
+  background: var(--wg-bg);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 4px 12px;
+}
+
+.title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--wg-text-secondary);
+  text-transform: none;
+}
+
+.iconBtn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wg-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconBtn:hover:not(:disabled) {
+  background: var(--wg-bg-muted);
+  color: var(--wg-text);
+}
+
+.iconBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chatTabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.chatTab {
+  display: flex;
+  align-items: center;
+  max-width: 148px;
+  flex-shrink: 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  margin-bottom: -1px;
+}
+
+.chatTab[data-active] {
+  border-bottom-color: var(--wg-accent);
+}
+
+.chatTabBtn {
+  min-width: 0;
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 7px 4px 7px 10px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--wg-text-muted);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.chatTab[data-active] .chatTabBtn {
+  color: var(--wg-text);
+  font-weight: 550;
+}
+
+.chatTabBtn:hover:not(:disabled) {
+  color: var(--wg-text);
+}
+
+.chatTabBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chatTabClose {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--wg-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0;
+}
+
+.chatTab:hover .chatTabClose,
+.chatTab[data-active] .chatTabClose,
+.chatTabClose:focus-visible {
+  opacity: 1;
+}
+
+.chatTabClose:hover:not(:disabled) {
+  color: var(--wg-text);
+  background: var(--wg-bg-muted);
+}
+
+.chatTabClose:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.hint {
+  padding: 4px 12px 8px;
+  font-size: 11px;
+  color: var(--wg-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hintSep {
+  margin: 0 6px;
+  opacity: 0.45;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.empty {
+  margin: auto;
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--wg-text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 16em;
+}
+
+.bubble {
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.bubble[data-role="user"] {
+  align-self: flex-end;
+  max-width: 92%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--wg-bg-muted);
+}
+
+.bubble[data-role="assistant"] {
+  align-self: stretch;
+}
+
+.role {
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--wg-text-muted);
+  margin-bottom: 6px;
+}
+
+.bubble[data-role="user"] .role {
+  display: none;
+}
+
+.content {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--wg-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.thinking {
+  margin: 0 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: var(--wg-bg-muted);
+}
+
+.thinkingSummary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--wg-text-secondary);
+}
+
+.thinkingSummary::-webkit-details-marker {
+  display: none;
+}
+
+.thinkingCaret {
+  display: inline-block;
+  transition: transform 0.12s ease;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.thinking[open] .thinkingCaret {
+  transform: rotate(90deg);
+}
+
+.thinkingBody {
+  margin: 0;
+  padding: 0 10px 8px;
+  max-height: 200px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--wg-text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+}
+
+.proposals {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proposalsTitle {
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--wg-text-muted);
+  margin-bottom: 2px;
+}
+
+.reviewBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--wg-border-subtle);
+  background: var(--wg-bg-elevated);
+}
+
+.reviewCount {
+  border: none;
+  background: transparent;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--wg-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reviewCount:hover {
+  background: var(--wg-bg-muted);
+}
+
+.reviewActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reviewKeep {
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+  background: var(--wg-bg-muted);
+  color: var(--wg-text);
+}
+
+.reviewKeep:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--wg-accent) 16%, var(--wg-bg-muted));
+}
+
+.reviewKeep:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.proposal {
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: 10px;
+  background: var(--wg-bg-elevated);
+  padding: 10px;
+}
+
+.proposal[data-status="applied"] {
+  opacity: 0.72;
+}
+
+.proposal[data-status="skipped"] {
+  opacity: 0.45;
+}
+
+.proposalMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--wg-text-muted);
+}
+
+.proposalBadge {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--wg-accent);
+}
+
+.proposalNote {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--wg-text-secondary);
+}
+
+.proposalPreview {
+  margin: 8px 0 0;
+  max-height: 160px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--wg-bg);
+  border: none;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  color: var(--wg-text);
+}
+
+.proposalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.error {
+  margin: 0 12px 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wg-danger, #c0392b) 10%, transparent);
+  color: var(--wg-danger, #c0392b);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.composer {
+  flex-shrink: 0;
+  padding: 10px 12px 12px;
+  background: var(--wg-bg);
+}
+
+.composerShell {
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: 12px;
+  background: var(--wg-bg-elevated);
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 4%, transparent);
+  overflow: hidden;
+  transition: border-color 0.12s ease;
+}
+
+.composerShell:focus-within {
+  border-color: color-mix(in srgb, var(--wg-accent) 45%, var(--wg-border));
+}
+
+.input {
+  width: 100%;
+  resize: none;
+  box-sizing: border-box;
+  padding: 10px 12px 4px;
+  border: none;
+  background: transparent;
+  color: var(--wg-text);
+  font-size: 13px;
+  line-height: 1.45;
+  outline: none;
+  font-family: inherit;
+  display: block;
+}
+
+.composerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px 8px;
+}
+
+.composerHint {
+  font-size: 11px;
+  color: var(--wg-text-muted);
+  padding-left: 4px;
+}
+
+.ghost,
+.primary,
+.sendBtn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ghost {
+  border: none;
+  background: transparent;
+  color: var(--wg-text-secondary);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--wg-bg-muted);
+  color: var(--wg-text);
+}
+
+.ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.primary,
+.sendBtn {
+  border: none;
+  background: var(--wg-accent);
+  color: #fff;
+  font-weight: 550;
+}
+
+.primary:hover:not(:disabled),
+.sendBtn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.primary:disabled,
+.sendBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

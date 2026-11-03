@@ -83,7 +83,13 @@ export function parseInspireJson(
     typeof parsed.name === "string" && parsed.name.trim()
       ? parsed.name.trim()
       : tree[0].title;
-  return { name, tree };
+  return {
+    name,
+    tree,
+    glossary: [],
+    glossaryLinks: [],
+    glossaryLogs: [],
+  };
 }
 
 function projectToCompact(project: ProjectData): unknown {
@@ -159,4 +165,30 @@ Return JSON.`;
     temperature: 0.5,
   });
   return parseInspireJson(raw, { outlineOnly: true });
+}
+
+/**
+ * 杂乱粘贴片段 → 整理成树 + 润色正文（不杜撰关键事实）。
+ * 返回的 tree 由调用方包进「粘贴导入」根并挂到当前项目。
+ */
+export async function inspireFromPaste(rawText: string): Promise<ProjectData> {
+  const q = rawText.trim();
+  if (!q) throw new Error("Empty paste");
+  const clipped = q.length > 12000 ? `${q.slice(0, 12000)}\n…` : q;
+  const user = `The user pasted messy notes / fragments. Organize them into a WanGou project JSON.
+Rules:
+- Preserve facts and key points; you may restructure hierarchy and polish wording
+- Do NOT invent key data, numbers, names, or conclusions not implied by the input
+- Prefer a clear multi-level tree; aim for at most ~40 nodes
+- Each node: title + Markdown content; optional priority sparingly; no free-text labels
+- name: a short project/import title summarizing the paste
+
+Paste:
+${clipped}`;
+  const raw = await chatCompletion({
+    system: SYSTEM_JSON,
+    user,
+    temperature: 0.55,
+  });
+  return parseInspireJson(raw);
 }

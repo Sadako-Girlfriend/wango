@@ -1,0 +1,76 @@
+/* 词表相关轻量对话框：与 TreePane 确认框视觉对齐，独立文件避免耦合树组件 */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel {
+  width: min(400px, 92vw);
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow);
+  padding: 18px 18px 14px;
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.body {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--wg-text-secondary);
+  line-height: 1.55;
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--wg-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ghost,
+.primary {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--wg-radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ghost {
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg);
+  color: var(--wg-text);
+}
+
+.primary {
+  border: 1px solid var(--wg-accent);
+  background: var(--wg-accent);
+  color: #fff;
+}
+
+.primary:disabled,
+.ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -7,6 +7,8 @@ import styles from "./CloseConfirmDialog.module.css";
 
 interface CloseConfirmDialogProps {
   title: string;
+  /** 覆盖默认说明文案 */
+  body?: string;
   onSave: () => void;
   onDiscard: () => void;
   onCancel: () => void;
@@ -14,6 +16,7 @@ interface CloseConfirmDialogProps {
 
 export function CloseConfirmDialog({
   title,
+  body,
   onSave,
   onDiscard,
   onCancel,
@@ -32,7 +35,7 @@ export function CloseConfirmDialog({
         <h2 id="wg-close-title" className={styles.title}>
           {t("close.title", { name: title })}
         </h2>
-        <p className={styles.body}>{t("close.body")}</p>
+        <p className={styles.body}>{body ?? t("close.body")}</p>
         <div className={styles.actions}>
           <button type="button" className={styles.ghost} onClick={onCancel}>
             {t("close.cancel")}

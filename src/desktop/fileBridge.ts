@@ -4,7 +4,12 @@
  * 用户路径一律走 Rust 读写，兼容中文目录与空格。
  */
 
-import { collectAllMediaRelPaths, type ProjectData } from "@/domain";
+import {
+  collectAllMediaRelPaths,
+  type AgentSession,
+  type AgentThread,
+  type ProjectData,
+} from "@/domain";
 import { decodeWangoBytes, encodePackageWango } from "@/io";
 import {
   readBlobsByRelPaths,
@@ -23,6 +28,7 @@ import {
 import {
   defaultContentBatchFolderName,
   defaultContentLongPngFileName,
+  defaultDocxFileName,
   defaultLongPdfFileName,
   defaultMarkdownFileName,
   defaultMindmapPngFileName,
@@ -89,33 +95,43 @@ export async function saveTextFile(
 }
 
 /** 收集附件字节并打成统一 .wango ZIP */
-async function buildWangoBytes(project: ProjectData): Promise<Uint8Array> {
+async function buildWangoBytes(
+  project: ProjectData,
+  agent?: AgentSession | AgentThread | null,
+): Promise<Uint8Array> {
   const rels = collectAllMediaRelPaths(project.tree);
   const blobs = rels.length > 0 ? await readBlobsByRelPaths(rels) : [];
-  return encodePackageWango(project, blobs);
+  return encodePackageWango(project, blobs, { agent: agent ?? null });
 }
 
-/** 覆盖写入指定路径的 .wango（始终 ZIP） */
+/** 覆盖写入指定路径的 .wango（始终 ZIP；日常保存不带 Agent） */
 export async function saveWangoToPath(
   project: ProjectData,
   path: string,
+  agent?: AgentSession | AgentThread | null,
 ): Promise<void> {
   const target = ensureWangoExtension(trimPath(path));
 
   if (isTauriRuntime()) {
-    const bytes = await buildWangoBytes(project);
+    const bytes = await buildWangoBytes(project, agent);
     await nativeWriteBytes(target, bytes);
     return;
   }
   throw new Error("浏览器预览无法静默写回 .wango，请用「另存为」下载");
 }
 
+export type SaveWangoFileOptions = SaveDialogOptions & {
+  /** 导出时可选写入 Agent 对话 */
+  agent?: AgentSession | AgentThread | null;
+};
+
 /** 另存为 .wango；返回最终路径 */
 export async function saveWangoFile(
   project: ProjectData,
-  options?: SaveDialogOptions,
+  options?: SaveWangoFileOptions,
 ): Promise<string | null> {
   const suggested = options?.defaultName ?? defaultWangoFileName(project);
+  const agent = options?.agent ?? null;
 
   if (isTauriRuntime()) {
     const picked = await pickSavePath(
@@ -125,11 +141,11 @@ export async function saveWangoFile(
     );
     if (!picked) return null;
     const path = ensureWangoExtension(picked);
-    await saveWangoToPath(project, path);
+    await saveWangoToPath(project, path, agent);
     return path;
   }
 
-  const bytes = await buildWangoBytes(project);
+  const bytes = await buildWangoBytes(project, agent);
   const blob = new Blob([bytes.slice()], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -157,10 +173,77 @@ export async function saveOrSaveAsWango(
   });
 }
 
+/** 选大纲导入文件（.docx / .md） */
+export async function pickOutlineImportFile(): Promise<{
+  fileName: string;
+  kind: "markdown" | "docx";
+  text?: string;
+  bytes?: ArrayBuffer;
+} | null> {
+  const acceptKind = (name: string): "markdown" | "docx" | null => {
+    const n = name.toLowerCase();
+    if (n.endsWith(".md") || n.endsWith(".markdown")) return "markdown";
+    if (n.endsWith(".docx")) return "docx";
+    return null;
+  };
+
+  if (isTauriRuntime()) {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const path = await open({
+      multiple: false,
+      filters: [
+        { name: "Outline", extensions: ["docx", "md", "markdown"] },
+      ],
+    });
+    if (!path || Array.isArray(path)) return null;
+    const abs = trimPath(path);
+    const fileName = abs.replace(/^.*[/\\]/, "");
+    const kind = acceptKind(fileName);
+    if (!kind) return null;
+    const bytes = await nativeReadBytes(abs);
+    if (kind === "markdown") {
+      const text = new TextDecoder("utf-8").decode(bytes);
+      return { fileName, kind, text };
+    }
+    const copy = new Uint8Array(bytes.byteLength);
+    copy.set(bytes);
+    return { fileName, kind, bytes: copy.buffer };
+  }
+
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".docx,.md,.markdown,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      const kind = acceptKind(file.name);
+      if (!kind) {
+        resolve(null);
+        return;
+      }
+      if (kind === "markdown") {
+        resolve({ fileName: file.name, kind, text: await file.text() });
+      } else {
+        resolve({
+          fileName: file.name,
+          kind,
+          bytes: await file.arrayBuffer(),
+        });
+      }
+    };
+    input.click();
+  });
+}
+
 /** 打开 .wango（路径支持中文与空格；兼容老纯 JSON） */
 export async function openWangoFile(): Promise<{
   project: ProjectData;
   path: string | null;
+  agent: AgentSession | null;
 } | null> {
   if (isTauriRuntime()) {
     const { open } = await import("@tauri-apps/plugin-dialog");
@@ -183,9 +266,9 @@ export async function openWangoFile(): Promise<{
         return;
       }
       const buf = new Uint8Array(await file.arrayBuffer());
-      const { projectData, files } = await decodeWangoBytes(buf);
+      const { projectData, files, agent } = await decodeWangoBytes(buf);
       await stageAttachmentBlobs(files);
-      resolve({ project: projectData, path: file.name });
+      resolve({ project: projectData, path: file.name, agent });
     };
     input.click();
   });
@@ -195,12 +278,13 @@ export async function openWangoFile(): Promise<{
 export async function loadWangoFromPath(path: string): Promise<{
   project: ProjectData;
   path: string;
+  agent: AgentSession | null;
 }> {
   const abs = trimPath(path);
   const bytes = await nativeReadBytes(abs);
-  const { projectData, files } = await decodeWangoBytes(bytes);
+  const { projectData, files, agent } = await decodeWangoBytes(bytes);
   await stageAttachmentBlobs(files);
-  return { project: projectData, path: abs };
+  return { project: projectData, path: abs, agent };
 }
 
 /** 导出喂 AI Markdown */
@@ -309,6 +393,57 @@ export async function exportLongPdfFile(
   const name = defaultLongPdfFileName(project, scopeLabel);
   const bytes = new Uint8Array(await blob.arrayBuffer());
   return savePdfFile(name, bytes, {
+    defaultName: name,
+    defaultPath: resolveExportDefaultPath(name, lastDir),
+  });
+}
+
+function ensureDocxExtension(path: string): string {
+  const p = trimPath(path);
+  if (/\.docx$/i.test(p)) return p;
+  return `${p}.docx`;
+}
+
+/** 另存 Word .docx 二进制 */
+export async function saveDocxFile(
+  defaultName: string,
+  bytes: Uint8Array,
+  options?: SaveDialogOptions,
+): Promise<string | null> {
+  if (isTauriRuntime()) {
+    const path = await pickSavePath(
+      options?.defaultName ?? defaultName,
+      [{ name: "Word", extensions: ["docx"] }],
+      options?.defaultPath,
+    );
+    if (!path) return null;
+    const target = ensureDocxExtension(path);
+    await nativeWriteBytes(target, bytes);
+    return target;
+  }
+
+  const blob = new Blob([bytes.slice()], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = options?.defaultName ?? defaultName;
+  a.click();
+  URL.revokeObjectURL(url);
+  return null;
+}
+
+/** 导出 Word .docx */
+export async function exportDocxFile(
+  project: ProjectData,
+  blob: Blob,
+  lastDir?: string | null,
+  scopeLabel?: string,
+): Promise<string | null> {
+  const name = defaultDocxFileName(project, scopeLabel);
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  return saveDocxFile(name, bytes, {
     defaultName: name,
     defaultPath: resolveExportDefaultPath(name, lastDir),
   });

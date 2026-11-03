@@ -107,6 +107,36 @@
   field-sizing: content;
 }
 
+.statsBtn {
+  flex-shrink: 0;
+  height: 28px;
+  margin-left: auto;
+  padding: 0 10px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  background: var(--wg-bg-elevated);
+  color: var(--wg-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.statsBtn:hover:not(:disabled) {
+  color: var(--wg-accent);
+  border-color: color-mix(in srgb, var(--wg-accent) 45%, var(--wg-border));
+  background: var(--wg-accent-soft);
+}
+
+.statsBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.statsBtn[aria-expanded="true"] {
+  color: var(--wg-accent);
+  border-color: var(--wg-accent);
+  background: var(--wg-accent-soft);
+}
+
 .wandBtn {
   flex-shrink: 0;
   width: 32px;
@@ -142,9 +172,18 @@
 
 .empty {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 22px 28px 16px;
+  color: var(--wg-text-muted);
+}
+
+.emptyHint {
+  flex: 1;
   display: grid;
   place-items: center;
-  color: var(--wg-text-muted);
 }
 
 .empty[data-enter] {

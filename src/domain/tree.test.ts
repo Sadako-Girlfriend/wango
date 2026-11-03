@@ -4,9 +4,11 @@ import {
   addChild,
   createNode,
   demoteNode,
+  dissolveNode,
   duplicateAsSibling,
   moveNode,
   promoteNode,
+  releaseChildren,
   removeNode,
   updateNode,
 } from "./tree";
@@ -66,6 +68,30 @@ describe("tree + numbering", () => {
     a.children = [b];
     const tree = removeNode([a], "b");
     expect(tree[0].children).toHaveLength(0);
+  });
+
+  it("释放子节点：父保留，孩子升为同级", () => {
+    const a = createNode({ id: "a", title: "A", content: "父文" });
+    const b = createNode({ id: "b", title: "B" });
+    const c = createNode({ id: "c", title: "C" });
+    a.children = [b, c];
+    const { tree, selectId } = releaseChildren([a], "a");
+    expect(tree.map((n) => n.id)).toEqual(["a", "b", "c"]);
+    expect(tree[0].children).toHaveLength(0);
+    expect(tree[0].content).toBe("父文");
+    expect(selectId).toBe("b");
+  });
+
+  it("解散节点：孩子顶替父，正文并入首孩", () => {
+    const a = createNode({ id: "a", title: "壳", content: "导语" });
+    const b = createNode({ id: "b", title: "B", content: "正文B" });
+    const c = createNode({ id: "c", title: "C" });
+    a.children = [b, c];
+    const { tree, selectId } = dissolveNode([a], "a");
+    expect(tree.map((n) => n.id)).toEqual(["b", "c"]);
+    expect(tree[0].content).toContain("导语");
+    expect(tree[0].content).toContain("正文B");
+    expect(selectId).toBe("b");
   });
 
   it("同级复制含子树且分配新 id", () => {

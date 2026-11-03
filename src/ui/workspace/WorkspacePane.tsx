@@ -3,9 +3,16 @@
  * 桌面端同时接 Tauri 原生拖放 + HTML5 兜底（部分环境原生事件会失效）。
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorView, type EditorHandle, type WandCapture } from "@/editor";
-import type { AttachmentMeta, NumberedTreeNode, TreeNode } from "@/domain";
+import {
+  analyzeScope,
+  analyzeSelection,
+  type AttachmentMeta,
+  type NumberedTreeNode,
+  type StatsScope,
+  type TreeNode,
+} from "@/domain";
 import {
   pickAndStage,
   stageBrowserFiles,
@@ -20,8 +27,11 @@ import {
 } from "@/ai/wandRewrite";
 import { t } from "@/i18n";
 import { useI18n } from "@/i18n/useI18n";
+import type { OpenedPage, ProjectTab } from "@/store/sessionStore";
 import { AttachmentBar } from "./AttachmentBar";
+import { ContentStatsPanel } from "./ContentStatsPanel";
 import { WandConfirmDialog, WandIdeaDialog } from "./WandDialogs";
+import { WorkspaceOpenTabs } from "./WorkspaceOpenTabs";
 import styles from "./WorkspacePane.module.css";
 
 interface WorkspacePaneProps {
@@ -29,10 +39,39 @@ interface WorkspacePaneProps {
   numberLabel: string | null;
   /** 编号树：魔法棒上下文用全树标题大纲 */
   numberedTree: NumberedTreeNode[];
+  /** 当前项目 tab：用于「已打开」页签 */
+  projectTab?: ProjectTab | null;
+  openedActive?: OpenedPage | null;
+  onOpenWorkspacePage?: (page: OpenedPage) => void;
+  onCloseOpenedPage?: (page: OpenedPage) => void;
+  onCloseOtherOpenedPages?: (page: OpenedPage) => void;
+  onCloseAllOpenedPages?: () => void;
   onTitleChange: (title: string) => void;
   onContentChange: (markdown: string) => void;
   /** 灵感生成中：正文只读 + 外推打字机 */
   contentStreaming?: boolean;
+  glossaryLinks?: import("@/domain").GlossaryLink[];
+  glossaryColors?: Record<string, string>;
+  glossaryTitles?: Record<string, string>;
+  glossaryBodies?: Record<string, string>;
+  onGlossaryEntryClick?: (entryId: string) => void;
+  onGlossaryPeek?: (detail: {
+    entryIds: string[];
+    primaryId: string;
+    clientX: number;
+    clientY: number;
+  }) => void;
+  onGlossaryOpen?: (entryId: string) => void;
+  onBindGlossary?: (
+    sel: import("@/editor/EditorView").GlossaryEditorSelection,
+  ) => void;
+  onCreateGlossaryChild?: (
+    sel: import("@/editor/EditorView").GlossaryEditorSelection,
+  ) => void;
+  onUnbindGlossary?: (
+    sel: import("@/editor/EditorView").GlossaryEditorSelection,
+  ) => void;
+  onUnbindGlossaryLink?: (linkId: string) => void;
   onAttachFiles: (metas: AttachmentMeta[]) => void;
   onOpenAttachment: (meta: AttachmentMeta) => void;
   onRemoveAttachment: (meta: AttachmentMeta) => void;
@@ -52,9 +91,26 @@ export function WorkspacePane({
   node,
   numberLabel,
   numberedTree,
+  projectTab = null,
+  openedActive = null,
+  onOpenWorkspacePage,
+  onCloseOpenedPage,
+  onCloseOtherOpenedPages,
+  onCloseAllOpenedPages,
   onTitleChange,
   onContentChange,
   contentStreaming = false,
+  glossaryLinks = [],
+  glossaryColors,
+  glossaryTitles,
+  glossaryBodies,
+  onGlossaryEntryClick,
+  onGlossaryPeek,
+  onGlossaryOpen,
+  onBindGlossary,
+  onCreateGlossaryChild,
+  onUnbindGlossary,
+  onUnbindGlossaryLink,
   onAttachFiles,
   onOpenAttachment,
   onRemoveAttachment,
@@ -63,11 +119,16 @@ export function WorkspacePane({
   const editorRef = useRef<EditorHandle>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  /** 切换节点时内容区克制入场；灵感打字机期间不叠动画 */
-  const [entering, setEntering] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
   const [wandPhase, setWandPhase] = useState<WandPhase>(null);
   const [wandBusy, setWandBusy] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [statsScope, setStatsScope] = useState<StatsScope>("nodeOnly");
+  const [selectionSnap, setSelectionSnap] = useState<{
+    text: string;
+    block: "text" | "code" | "callout";
+  } | null>(null);
   const dragDepth = useRef(0);
   const busyRef = useRef(false);
   const nodeRef = useRef(node);
@@ -83,12 +144,9 @@ export function WorkspacePane({
     if (!id || prev === id) return;
     setEditingTitle(false);
     setWandPhase(null);
-    // 首个选中 / 灵感流式：不播切换动画
-    if (prev === null || contentStreaming) return;
-    setEntering(true);
-    const timer = window.setTimeout(() => setEntering(false), 300);
-    return () => window.clearTimeout(timer);
-  }, [node?.id, contentStreaming]);
+    setStatsOpen(false);
+    setSelectionSnap(null);
+  }, [node?.id]);
 
   useEffect(() => {
     if (!editingTitle) return;
@@ -97,6 +155,13 @@ export function WorkspacePane({
     el.focus();
     el.select();
   }, [editingTitle]);
+
+  const commitTitle = useCallback(() => {
+    if (!node) return;
+    const next = titleDraft.trim() || tr("editor.nodeUntitled");
+    if (next !== node.title) onTitleChange(next);
+    setEditingTitle(false);
+  }, [node, titleDraft, onTitleChange, tr]);
 
   const applyStage = useCallback(
     (result: StageResult) => {
@@ -251,6 +316,52 @@ export function WorkspacePane({
     return tr("wand.scopeSelection");
   };
 
+  const openStats = useCallback(() => {
+    if (!node || contentStreaming) return;
+    const cap = editorRef.current?.captureWandTarget();
+    if (cap && cap.kind === "selection" && cap.text.trim()) {
+      setSelectionSnap({ text: cap.text, block: cap.block });
+      setStatsScope("selection");
+    } else {
+      setSelectionSnap(null);
+      setStatsScope((s) => (s === "selection" ? "nodeOnly" : s));
+    }
+    setStatsOpen(true);
+  }, [node, contentStreaming]);
+
+  const toggleStats = useCallback(() => {
+    if (statsOpen) {
+      setStatsOpen(false);
+      return;
+    }
+    openStats();
+  }, [statsOpen, openStats]);
+
+  useEffect(() => {
+    const onHotkey = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (id === "statsToggle") toggleStats();
+    };
+    window.addEventListener("wg:hotkey", onHotkey);
+    return () => window.removeEventListener("wg:hotkey", onHotkey);
+  }, [toggleStats]);
+
+  const selectionStats = useMemo(() => {
+    if (!selectionSnap) return null;
+    return analyzeSelection(selectionSnap.text, selectionSnap.block);
+  }, [selectionSnap]);
+
+  const stats = useMemo(
+    () =>
+      analyzeScope({
+        scope: statsScope,
+        tree: numberedTree,
+        current: node,
+        selectionStats,
+      }),
+    [statsScope, numberedTree, node, selectionStats],
+  );
+
   const openWand = async () => {
     if (!node || contentStreaming || wandBusy) return;
     await ensureApiSettings();
@@ -308,10 +419,27 @@ export function WorkspacePane({
     }
   };
 
+  const openTabs =
+    projectTab &&
+    onOpenWorkspacePage &&
+    onCloseOpenedPage &&
+    onCloseOtherOpenedPages &&
+    onCloseAllOpenedPages ? (
+      <WorkspaceOpenTabs
+        tab={projectTab}
+        active={openedActive}
+        onSelect={onOpenWorkspacePage}
+        onClose={onCloseOpenedPage}
+        onCloseOthers={onCloseOtherOpenedPages}
+        onCloseAll={onCloseAllOpenedPages}
+      />
+    ) : null;
+
   if (!node) {
     return (
       <div className={styles.empty} data-enter>
-        {tr("editor.pickNode")}
+        {openTabs}
+        <div className={styles.emptyHint}>{tr("editor.pickNode")}</div>
       </div>
     );
   }
@@ -321,8 +449,8 @@ export function WorkspacePane({
   return (
     <div
       className={styles.root}
+      data-wg-focus="editor"
       data-drop={dragging || undefined}
-      data-enter={entering || undefined}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}
       onDragOver={onDragOver}
@@ -331,6 +459,7 @@ export function WorkspacePane({
       {dragging && (
         <div className={styles.dropMask}>{tr("editor.dropHint")}</div>
       )}
+      {openTabs}
       <div className={styles.titleBlock}>
         {numberLabel && (
           <span className={styles.number} aria-hidden>
@@ -341,29 +470,46 @@ export function WorkspacePane({
           <input
             ref={titleInputRef}
             className={styles.titleInput}
-            value={node.title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            onBlur={() => setEditingTitle(false)}
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={() => commitTitle()}
             onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === "Escape") {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitTitle();
+              } else if (e.key === "Escape") {
                 e.preventDefault();
                 setEditingTitle(false);
               }
             }}
             aria-label={tr("editor.nodeTitle")}
             placeholder={tr("editor.nodeUntitled")}
-            size={Math.max(4, (node.title || tr("editor.nodeUntitled")).length)}
+            size={Math.max(4, (titleDraft || tr("editor.nodeUntitled")).length)}
           />
         ) : (
           <button
             type="button"
             className={styles.titleText}
-            onClick={() => setEditingTitle(true)}
+            onClick={() => {
+              setTitleDraft(node.title);
+              setEditingTitle(true);
+            }}
             aria-label={tr("editor.nodeTitle")}
           >
             {titleText}
           </button>
         )}
+        <button
+          type="button"
+          className={styles.statsBtn}
+          onClick={toggleStats}
+          disabled={contentStreaming}
+          title={tr("stats.buttonHint")}
+          aria-label={tr("stats.button")}
+          aria-expanded={statsOpen}
+        >
+          {tr("stats.button")}
+        </button>
         <button
           type="button"
           className={styles.wandBtn}
@@ -375,6 +521,25 @@ export function WorkspacePane({
           <WandIcon />
         </button>
       </div>
+      {statsOpen ? (
+        <ContentStatsPanel
+          scope={statsScope}
+          onScopeChange={(s) => {
+            if (s === "selection" && !selectionSnap) {
+              const cap = editorRef.current?.captureWandTarget();
+              if (cap && cap.kind === "selection" && cap.text.trim()) {
+                setSelectionSnap({ text: cap.text, block: cap.block });
+                setStatsScope("selection");
+              }
+              return;
+            }
+            setStatsScope(s);
+          }}
+          stats={stats}
+          selectionAvailable={Boolean(selectionSnap?.text.trim())}
+          onClose={() => setStatsOpen(false)}
+        />
+      ) : null}
       <div className={styles.editorArea}>
         <EditorView
           ref={editorRef}
@@ -382,6 +547,17 @@ export function WorkspacePane({
           markdown={node.content}
           onChange={onContentChange}
           contentStreaming={contentStreaming}
+          glossaryLinks={glossaryLinks}
+          glossaryColors={glossaryColors}
+          glossaryTitles={glossaryTitles}
+          glossaryBodies={glossaryBodies}
+          onGlossaryEntryClick={onGlossaryEntryClick}
+          onGlossaryPeek={onGlossaryPeek}
+          onGlossaryOpen={onGlossaryOpen}
+          onBindGlossary={onBindGlossary}
+          onCreateGlossaryChild={onCreateGlossaryChild}
+          onUnbindGlossary={onUnbindGlossary}
+          onUnbindGlossaryLink={onUnbindGlossaryLink}
           onPickImage={pickImages}
           onDropFiles={(files) => {
             void ingestFiles(files);

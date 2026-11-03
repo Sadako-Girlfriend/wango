@@ -34,3 +34,6 @@ logo_2.ico
 docs/万构论.md
 docs/场景与定位.md
 新建文件夹/
+
+# 从 exe 抽出的调试图标（保留 icon-square-source 供圆角脚本）
+src-tauri/icon-source/exe-icon*.png

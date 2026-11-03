@@ -1,0 +1,218 @@
+.panel {
+  width: min(560px, 94vw);
+  max-height: min(560px, 88vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.footer {
+  flex-shrink: 0;
+}
+
+.searchWrap {
+  flex-shrink: 0;
+  margin: 0 0 10px;
+}
+
+.search {
+  width: 100%;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font-size: 13px;
+  outline: none;
+}
+
+.search:focus {
+  border-color: var(--wg-accent);
+}
+
+.search::placeholder {
+  color: var(--wg-text-muted);
+}
+
+.selectedBar {
+  flex-shrink: 0;
+  /* 固定占位，避免勾选后出现「已选」把列表框挤矮 */
+  min-height: 1.4em;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--wg-text-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cascade {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 0 14px;
+  overflow: hidden;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: var(--wg-radius-sm);
+  background: var(--wg-bg);
+  overflow: hidden;
+}
+
+.colHead {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wg-text-secondary);
+  border-bottom: 1px solid var(--wg-border-subtle);
+  background: var(--wg-bg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.empty {
+  margin: 16px 12px;
+  font-size: 13px;
+  color: var(--wg-text-secondary);
+}
+
+.row,
+.rowCompact {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  border: none;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--wg-border-subtle) 70%, transparent);
+  background: transparent;
+  color: var(--wg-text);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.markBtn {
+  flex-shrink: 0;
+  width: 1.6em;
+  height: 1.6em;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--wg-text-secondary);
+  font-size: 12px;
+  line-height: 1.6em;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.markBtn:hover {
+  background: var(--wg-bg-muted);
+  color: var(--wg-text);
+}
+
+.row {
+  align-items: flex-start;
+  padding: 8px 10px;
+}
+
+.rowCompact {
+  align-items: center;
+  /* 固定行高，选中/展开不把行撑高 */
+  min-height: 36px;
+  height: 36px;
+  padding: 0 10px;
+}
+
+.row:hover,
+.rowCompact:hover {
+  background: var(--wg-bg-muted);
+}
+
+.row[data-active],
+.rowCompact[data-active] {
+  background: var(--wg-accent-soft);
+}
+
+.row[data-open],
+.rowCompact[data-open] {
+  background: color-mix(in srgb, var(--wg-accent-soft) 55%, var(--wg-bg));
+}
+
+.row[data-active] .label,
+.rowCompact[data-active] .label,
+.row[data-open] .label,
+.rowCompact[data-open] .label {
+  color: inherit;
+  background: transparent;
+}
+
+.row .markBtn {
+  margin-top: 1px;
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--wg-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--wg-text-muted);
+  font-size: 11px;
+}
+
+@media (max-width: 520px) {
+  .cascade {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    max-height: min(640px, 92vh);
+  }
+}

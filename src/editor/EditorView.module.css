@@ -66,13 +66,14 @@
   background: transparent;
   color: var(--wg-text);
   font-size: 12px;
-  text-align: center;
-  padding: 0 2px 0 6px;
+  text-align: left;
+  padding: 0 4px 0 8px;
   outline: none;
   cursor: text;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 0;
 }
 
 .sizeCombobox[data-typing] {
@@ -80,9 +81,38 @@
   box-shadow: 0 0 0 3px var(--wg-accent-soft);
 }
 
+.sizeDraft {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .sizePlaceholder {
   color: var(--wg-text-muted);
   font-size: 11px;
+}
+
+/* 假光标：须够显眼（字号有数字时 1px 几乎看不见） */
+.sizeCaretFake {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  margin-left: 1px;
+  background: var(--wg-accent);
+  animation: wgSizeCaretBlink 1s step-end infinite;
+  flex-shrink: 0;
+}
+
+@keyframes wgSizeCaretBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sizeCaretFake {
+    animation: none;
+  }
 }
 
 .sizeComboboxCaret {
@@ -190,6 +220,14 @@
   box-shadow: var(--wg-shadow);
 }
 
+/** 仅定位；视觉交给 ThemeColorPalette */
+.colorMenuAnchor {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+}
+
 .colorClear {
   width: 100%;
   text-align: left;
@@ -254,6 +292,144 @@
   overflow: auto;
 }
 
+.contentInner {
+  min-height: 100%;
+}
+
+.ctxBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+}
+
+.ctxMenu {
+  position: fixed;
+  z-index: 96;
+  min-width: 200px;
+  max-width: min(320px, 90vw);
+  padding: 6px;
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border);
+  border-radius: var(--wg-radius-sm);
+  box-shadow: var(--wg-shadow);
+}
+
+.ctxHint {
+  margin: 2px 6px 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--wg-border-subtle);
+  font-size: 12px;
+  color: var(--wg-text-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctxItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--wg-text);
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ctxItem:hover {
+  background: var(--wg-bg-muted);
+}
+
+.ctxSep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--wg-border-subtle);
+}
+
+.ctxSubHead {
+  margin: 2px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wg-text-secondary);
+}
+
+.ctxBoundRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.ctxBoundRow:hover {
+  background: var(--wg-bg-muted);
+}
+
+.ctxBoundName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctxBoundUnbind {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--wg-text-secondary);
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ctxBoundUnbind:hover {
+  color: var(--wg-danger, #c0392b);
+  background: color-mix(in srgb, var(--wg-danger, #c0392b) 12%, transparent);
+}
+
+.glossaryTip {
+  position: fixed;
+  z-index: 97;
+  max-width: min(380px, 84vw);
+  padding: 12px 14px;
+  border-radius: 10px;
+  /* 深底，避免白底正文上看不清 */
+  background: #1c2430;
+  border: 1px solid #3a4658;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  color: #f3f5f8;
+  font-size: 14px;
+  line-height: 1.5;
+  pointer-events: none;
+  word-break: break-word;
+}
+
+.glossaryTipBlock + .glossaryTipBlock {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #3a4658;
+}
+
+.glossaryTipTitle {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #a8b3c4;
+  letter-spacing: 0.02em;
+}
+
+.glossaryTipBody {
+  font-size: 14px;
+  color: #f3f5f8;
+  white-space: pre-wrap;
+}
+
 .content :global(.tiptap) {
   outline: none;
   min-height: 240px;
@@ -268,8 +444,17 @@
   color: inherit;
 }
 
+.content :global(.tiptap p) {
+  margin: 0;
+}
+
+/* 块与块之间略分开；连续正文段落要紧凑，避免回车像空出一大截 */
 .content :global(.tiptap > * + *) {
-  margin-top: 0.65em;
+  margin-top: 0.55em;
+}
+
+.content :global(.tiptap > p + p) {
+  margin-top: 0.12em;
 }
 
 .content :global(.tiptap h1) {
@@ -319,6 +504,17 @@
 
 .content :global(.tiptap li + li) {
   margin-top: 0.25em;
+}
+
+.content :global(.wg-glossary-link) {
+  /* 只亮背景，字色跟正文走，避免浅底看不清 */
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--wg-accent) 22%, transparent);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--wg-accent) 45%, transparent);
+  border-radius: 2px;
+  padding: 0;
 }
 
 .content :global(.tiptap a.wg-link),

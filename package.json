@@ -1,7 +1,7 @@
 {
   "name": "wango",
   "private": true,
-  "version": "0.3.37",
+  "version": "0.3.39",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -34,6 +34,7 @@
     "@tiptap/pm": "^2.11.7",
     "@tiptap/react": "^2.11.7",
     "@tiptap/starter-kit": "^2.11.7",
+    "docx": "^9.15.1",
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",

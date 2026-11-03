@@ -19,4 +19,11 @@ export {
   toBatchMajorPngs,
   type ContentImageMode,
   type ContentImageItem,
+  type ContentImageOptions,
 } from "./toContentImages";
+export {
+  toDocx,
+  type DocxNumbering,
+  type DocxOptions,
+  type DocxScope,
+} from "./toDocx";

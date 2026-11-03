@@ -1,0 +1,42 @@
+.rail {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.treeSlot {
+  min-height: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+
+.split {
+  flex: 0 0 5px;
+  cursor: row-resize;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+}
+
+.split::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 2px;
+  height: 1px;
+  background: var(--wg-border-subtle);
+}
+
+.split:hover::after,
+.split[data-active]::after {
+  background: var(--wg-accent);
+}
+
+.glossarySlot {
+  min-height: 80px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  border-top: 1px solid var(--wg-border-subtle);
+}

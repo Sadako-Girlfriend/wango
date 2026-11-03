@@ -1,7 +1,8 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  /* 需高于粘贴导入等 z-index:100 的弹窗，否则「去设置」会被挡住 */
+  z-index: 120;
   display: grid;
   place-items: center;
   background: rgba(15, 23, 42, 0.35);
@@ -296,6 +297,84 @@
 .primary:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.hotkeyWarn {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #9a3412;
+  background: color-mix(in srgb, #fdba74 28%, var(--wg-bg-elevated));
+  border: 1px solid color-mix(in srgb, #fb923c 40%, transparent);
+}
+
+.hotkeyList {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(48vh, 420px);
+  overflow: auto;
+}
+
+.hotkeyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--wg-border-subtle);
+}
+
+.hotkeyMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hotkeyLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wg-text);
+}
+
+.hotkeyScope {
+  font-size: 11px;
+  color: var(--wg-text-secondary);
+}
+
+.hotkeyChord {
+  flex-shrink: 0;
+  min-width: 120px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--wg-radius-sm);
+  border: 1px solid var(--wg-border);
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font-size: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  cursor: pointer;
+}
+
+.hotkeyChord:hover {
+  border-color: var(--wg-accent);
+}
+
+.hotkeyChord[data-recording] {
+  border-color: var(--wg-accent);
+  background: var(--wg-accent-soft);
+  color: var(--wg-accent);
+}
+
+.hotkeyChord[data-conflict] {
+  border-color: #ea580c;
+  color: #9a3412;
 }
 
 @media (max-width: 560px) {

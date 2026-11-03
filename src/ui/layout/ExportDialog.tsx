@@ -7,7 +7,13 @@ import { useI18n } from "@/i18n/useI18n";
 import { ExportSamplePreview } from "./ExportSamplePreview";
 import styles from "./ExportDialog.module.css";
 
-export type ExportKind = "ai" | "mindmap" | "wango-as" | "pdf" | "images";
+export type ExportKind =
+  | "ai"
+  | "mindmap"
+  | "wango-as"
+  | "pdf"
+  | "images"
+  | "docx";
 export type ExportScope = "project" | "node";
 export type ExportNumbering = "restart" | "preserve";
 /** 内容图片：单张长图 / 多张按节点 / 多张按大节点 */
@@ -18,6 +24,10 @@ export type ExportRequest = {
   scope?: ExportScope;
   numbering?: ExportNumbering;
   imageMode?: ExportImageMode;
+  /** 仅 PDF / 图片：勾选后不画词表引用高亮；默认 false */
+  hideGlossaryStyles?: boolean;
+  /** 仅另存 .wango：是否打包 Agent 对话；默认 false */
+  includeAgent?: boolean;
 };
 
 interface ExportDialogProps {
@@ -73,6 +83,17 @@ function IconImages() {
   );
 }
 
+function IconDocx() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1 7V3.5L19.5 9H15zM8 13.2c.9 0 1.5.3 1.9.8l-.9.7c-.2-.3-.5-.5-1-.5-.7 0-1.2.6-1.2 1.3s.5 1.3 1.2 1.3c.5 0 .8-.2 1-.5l.9.7c-.4.5-1 .8-1.9.8-1.5 0-2.6-1.1-2.6-2.3S6.5 13.2 8 13.2zm4.6 4.1h-1.3l-1.1-4h1.4l.5 2.2.5-2.2h1.3l-1.3 4zm4.2 0H15l-1.5-4h1.4l.8 2.5.8-2.5H18l-1.2 4z"
+      />
+    </svg>
+  );
+}
+
 function IconWango() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
@@ -89,6 +110,7 @@ function iconOf(kind: ExportKind): ReactNode {
   if (kind === "pdf") return <IconPdf />;
   if (kind === "mindmap") return <IconMindmap />;
   if (kind === "images") return <IconImages />;
+  if (kind === "docx") return <IconDocx />;
   return <IconWango />;
 }
 
@@ -103,7 +125,13 @@ export function ExportDialog({
   const [numbering, setNumbering] = useState<ExportNumbering>("restart");
   const [imageTier, setImageTier] = useState<"single" | "multi">("single");
   const [imageBatch, setImageBatch] = useState<"node" | "major">("node");
+  /** 默认不勾：PDF/图片带词表引用色 */
+  const [hideGlossaryStyles, setHideGlossaryStyles] = useState(false);
+  /** 默认不勾：另存 .wango 不带 Agent */
+  const [includeAgent, setIncludeAgent] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const showGlossaryOpt = kind === "pdf" || kind === "images";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -114,7 +142,11 @@ export function ExportDialog({
   }, [busy, onCancel]);
 
   useEffect(() => {
-    if (kind === "pdf" && scope === "node" && !hasSelection) {
+    if (
+      (kind === "pdf" || kind === "docx") &&
+      scope === "node" &&
+      !hasSelection
+    ) {
       setScope("project");
     }
   }, [kind, scope, hasSelection]);
@@ -124,6 +156,7 @@ export function ExportDialog({
     if (k === "mindmap") return t("export.tileMindmap");
     if (k === "pdf") return t("export.tilePdf");
     if (k === "images") return t("export.tileImages");
+    if (k === "docx") return t("export.tileDocx");
     return t("export.tileWango");
   };
 
@@ -132,6 +165,7 @@ export function ExportDialog({
     if (k === "mindmap") return t("export.tileMindmapUse");
     if (k === "pdf") return t("export.tilePdfUse");
     if (k === "images") return t("export.tileImagesUse");
+    if (k === "docx") return t("export.tileDocxUse");
     return t("export.tileWangoUse");
   };
 
@@ -140,6 +174,7 @@ export function ExportDialog({
     if (k === "mindmap") return t("export.panelMindmap");
     if (k === "pdf") return t("export.panelPdf");
     if (k === "images") return t("export.panelImages");
+    if (k === "docx") return t("export.panelDocx");
     return t("export.panelWango");
   };
 
@@ -148,6 +183,7 @@ export function ExportDialog({
     if (k === "mindmap") return t("export.dialogMindmapHint");
     if (k === "pdf") return t("export.dialogPdfHint");
     if (k === "images") return t("export.dialogImagesHint");
+    if (k === "docx") return t("export.dialogDocxHint");
     return t("export.dialogWangoHint");
   };
 
@@ -158,7 +194,13 @@ export function ExportDialog({
 
   const confirm = async () => {
     if (busy) return;
-    if (kind === "pdf" && scope === "node" && !hasSelection) return;
+    if (
+      (kind === "pdf" || kind === "docx") &&
+      scope === "node" &&
+      !hasSelection
+    ) {
+      return;
+    }
     setBusy(true);
     try {
       if (kind === "pdf") {
@@ -166,9 +208,22 @@ export function ExportDialog({
           kind,
           scope,
           numbering: scope === "node" ? numbering : undefined,
+          hideGlossaryStyles,
+        });
+      } else if (kind === "docx") {
+        await onExport({
+          kind,
+          scope,
+          numbering: scope === "node" ? numbering : undefined,
         });
       } else if (kind === "images") {
-        await onExport({ kind, imageMode: resolveImageMode() });
+        await onExport({
+          kind,
+          imageMode: resolveImageMode(),
+          hideGlossaryStyles,
+        });
+      } else if (kind === "wango-as") {
+        await onExport({ kind, includeAgent });
       } else {
         await onExport({ kind });
       }
@@ -221,9 +276,25 @@ export function ExportDialog({
         aria-labelledby="wg-export-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="wg-export-title" className={styles.title}>
-          {t("export.dialogTitle")}
-        </h2>
+        <div className={styles.titleRow}>
+          <h2 id="wg-export-title" className={styles.title}>
+            {t("export.dialogTitle")}
+          </h2>
+          {showGlossaryOpt ? (
+            <label
+              className={styles.glossaryOpt}
+              title={t("export.hideGlossaryStylesHint")}
+            >
+              <input
+                type="checkbox"
+                checked={hideGlossaryStyles}
+                disabled={busy}
+                onChange={(e) => setHideGlossaryStyles(e.target.checked)}
+              />
+              <span>{t("export.hideGlossaryStyles")}</span>
+            </label>
+          ) : null}
+        </div>
         <p className={styles.hint}>{t("export.dialogBody")}</p>
 
         <div className={styles.layout}>
@@ -236,6 +307,7 @@ export function ExportDialog({
             <div className={styles.tileGrid}>
               {TILE_KINDS.map((k) => formatTile(k))}
             </div>
+            {formatTile("docx", true)}
             {formatTile("wango-as", true)}
           </div>
 
@@ -250,12 +322,29 @@ export function ExportDialog({
 
             <div
               className={
-                kind === "pdf" || kind === "images"
+                kind === "pdf" ||
+                kind === "images" ||
+                kind === "docx" ||
+                kind === "wango-as"
                   ? `${styles.optionsSlot} ${styles.optionsSlotActive}`
                   : styles.optionsSlot
               }
             >
-              {kind === "pdf" && (
+              {kind === "wango-as" && (
+                <label
+                  className={styles.glossaryOpt}
+                  title={t("export.includeAgentHint")}
+                >
+                  <input
+                    type="checkbox"
+                    checked={includeAgent}
+                    disabled={busy}
+                    onChange={(e) => setIncludeAgent(e.target.checked)}
+                  />
+                  <span>{t("export.includeAgent")}</span>
+                </label>
+              )}
+              {(kind === "pdf" || kind === "docx") && (
                 <div className={styles.scopeBlock}>
                   <div className={styles.scopeLabel}>
                     {t("export.dialogScope")}

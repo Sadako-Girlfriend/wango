@@ -7,6 +7,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { loadWangoFromPath } from "./fileBridge";
 import { isTauriRuntime } from "./draftStore";
+import { useAgentStore } from "@/store/agentStore";
 import { useSessionStore } from "@/store/sessionStore";
 
 /** 按路径打开一个或多个 .wango（已打开则切标签，不重复） */
@@ -19,10 +20,13 @@ export async function openWangoPaths(paths: string[]): Promise<void> {
       const loaded = await loadWangoFromPath(path);
       store.markLaunched();
       // openProjectTab 已按 filePath 去重：已打开则切到该标签
-      store.openProjectTab({
+      const tabId = store.openProjectTab({
         project: loaded.project,
         filePath: loaded.path,
       });
+      await useAgentStore
+        .getState()
+        .openFromPackage(loaded.path, tabId, loaded.agent);
     } catch (err) {
       console.error(err);
       window.alert(

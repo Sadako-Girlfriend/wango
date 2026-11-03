@@ -1,6 +1,6 @@
 # WanGou — Feature reference
 
-> Version: **0.3.37**  
+> Version: **0.3.39**  
 > Form factor: Windows desktop app (portable `wango.exe`, no NSIS installer)  
 > 中文：[功能说明.md](./功能说明.md)
 
@@ -34,6 +34,11 @@ WanGou is a **local-first** tree-structured writing / knowledge-decomposition to
 - Double-click a tab to rename the display name (does not rename the file on disk)
 - Quick jump to other recents
 
+### 1.5 New from paste / file
+- **New from paste**: local split by numbers or titles (Word HTML headings when available), or **AI organize**; confirms into a **new project tab**
+- **New from file**: pick `.docx` (Heading styles / outline levels) or `.md` (`#` headings) → preview → new project
+- Does not insert into the currently open tree (unlike opening a `.wango`)
+
 ---
 
 ## 2. Tree editing
@@ -44,7 +49,8 @@ WanGou is a **local-first** tree-structured writing / knowledge-decomposition to
 - In-tree search (match count, clear)
 - Derived numbering (display-only, not stored)
 - **Left-click** selects and opens the body; **right-click** opens the menu only (does not swap the editor)
-- Context menu: add child, copy, paste, **priority (submenu: none / high / medium / low)**, labels, delete
+- Context menu: add child, copy, paste, **priority (submenu)**, labels, **release children**, **dissolve node**, delete
+- Shortcuts (editable): with tree focus, ↑↓ select visible prev/next; ←→ promote/demote; Enter expand/collapse
 
 ---
 
@@ -55,7 +61,7 @@ Built on TipTap:
 | Area | Capabilities |
 |------|----------------|
 | Blocks | Paragraph, Heading 1 / 2 |
-| Text | Bold, italic, underline, font, size, color, highlight |
+| Text | Bold, italic, underline, font, size, line height, color, highlight |
 | Structure | Bulleted / numbered lists, links |
 | Special | Code blocks (language, copy, line numbers, collapse), callouts |
 | Media | Insert / drop images, resize, delete |
@@ -85,13 +91,22 @@ Built on TipTap:
 | PDF (reading) | Document-oriented export |
 | Mind map (structure) | Structure PNG rooted at the project name |
 | Content images | Long image or per-node batches |
+| Word (`.docx`) | Editable headings/body; code & callouts as images |
 | Save as `.wango` | Full ZIP copy, independent of the current path |
 
 Some exports support whole project vs current subtree, with restart / preserve numbering.
 
 ---
 
-## 5. Inspiration (AI, optional)
+## 5. Glossary
+
+- Lower left pane: **reference** or **copy** outline nodes as terms
+- Highlights / navigation in the body; blacklist; rename sync notes
+- Pane height is draggable; preference stored locally
+
+---
+
+## 6. Inspiration (AI, optional)
 
 Configure under **Settings → AI** (OpenAI-compatible):
 
@@ -105,21 +120,25 @@ Modes:
 2. **From one sentence** — full tree + body from a single prompt  
 3. **Outline only** — titles only  
 
+Also: **New from paste → AI organize** turns messy notes into a new project.
+
 Streaming, cancellable; credentials stay on device (never written into `.wango`).  
 Core write / save / export works fully offline.
 
 ---
 
-## 6. Settings & i18n
+## 7. Settings, shortcuts & stats
 
 - UI language: Chinese / English
-- Tabs: General / AI / About
-- Optional default export directory (project Save As still follows the project path)
+- Tabs: General / AI / **Shortcuts** / About
+- Shortcuts: record, conflict check, reset defaults (device-local)
+- Defaults include `Alt+1/2/3` focus tree/editor/glossary; `F10` content stats (Esc closes)
+- Optional default export directory; API config stays local
 - Window size / position remembered
 
 ---
 
-## 7. Build & distribute
+## 8. Build & distribute
 
 ```bash
 npm run tauri:dev      # daily desktop debug
@@ -132,20 +151,23 @@ Unsigned builds may trigger Defender — choose **Run anyway**.
 
 ---
 
-## 8. Checklist
+## 9. Checklist
 
-- [x] Tree edit, drag-drop, priority submenu, labels
+- [x] Tree edit, drag-drop, priority submenu, labels, release/dissolve
 - [x] Right-click does not change the body; left-click opens the node
-- [x] Rich text + code blocks + callouts + images
+- [x] Rich text + code blocks + callouts + images + line height
 - [x] Attachments
 - [x] `.wango` ZIP + legacy JSON open
 - [x] Multi-tab + recents + home drop-open
+- [x] New from paste / new from file (docx, md)
+- [x] Glossary (reference / copy / scan / blacklist)
 - [x] Single-instance open
-- [x] Export Markdown / PDF / mind map / images / `.wango`
-- [x] Inspiration (refine / sentence / outline)
+- [x] Export Markdown / PDF / mind map / images / Word / `.wango`
+- [x] Inspiration + paste AI
+- [x] Configurable shortcuts + content stats (F10)
 - [x] zh / en UI + local API settings
 - [x] Portable exe (no NSIS)
 
 ---
 
-*Aligned with 0.3.37; when in doubt, trust the running UI.*
+*Aligned with 0.3.39; when in doubt, trust the running UI.*

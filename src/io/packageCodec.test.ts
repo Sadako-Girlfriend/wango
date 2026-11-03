@@ -18,6 +18,9 @@ const sampleProject: ProjectData = {
       attachments: [],
     },
   ],
+  glossary: [],
+  glossaryLinks: [],
+  glossaryLogs: [],
 };
 
 describe("encodePackageWango", () => {
@@ -72,5 +75,35 @@ describe("decodeWangoBytes", () => {
     const decoded = await decodeWangoBytes(bytes);
     expect(decoded.projectData.name).toBe("测试项目");
     expect(decoded.files).toEqual([]);
+    expect(decoded.agent).toBeNull();
+  });
+});
+
+describe("agent in package", () => {
+  it("勾选时可写入并可还原 Agent", async () => {
+    const bytes = await encodePackageWango(sampleProject, [], {
+      agent: {
+        version: 1,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        messages: [
+          {
+            id: "m1",
+            role: "user",
+            content: "你好",
+            at: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      },
+    });
+    const decoded = await decodeWangoBytes(bytes);
+    expect(decoded.agent?.version).toBe(2);
+    expect(decoded.agent?.chats[0]?.messages).toHaveLength(1);
+    expect(decoded.agent?.chats[0]?.messages[0]?.content).toBe("你好");
+  });
+
+  it("日常保存不传 agent 时不带对话", async () => {
+    const bytes = await encodePackageWango(sampleProject, []);
+    const decoded = await decodeWangoBytes(bytes);
+    expect(decoded.agent).toBeNull();
   });
 });

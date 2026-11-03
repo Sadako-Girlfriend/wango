@@ -5,6 +5,7 @@
 import { jsPDF } from "jspdf";
 import type { ProjectData } from "@/domain";
 import {
+  collectGlossaryColors,
   findNodeById,
   getNumberById,
   withNumbering,
@@ -14,6 +15,7 @@ import {
 import {
   mountAndCapturePng,
   numberedToMarkdown,
+  type GlossaryExportPaint,
 } from "./longImageCapture";
 import { rewriteMarkdownForDisplay } from "@/desktop/mediaUrl";
 
@@ -27,6 +29,24 @@ export interface LongPdfOptions {
   nodeId?: string | null;
   /** 仅 scope=node 有效；默认 restart */
   numbering?: LongPdfNumbering;
+  /**
+   * 为 true 时不画词表引用高亮（勾选「不显示词表引用」）。
+   * 默认 false：PDF 带引用色，贴近编辑器。
+   */
+  hideGlossaryStyles?: boolean;
+}
+
+function glossaryPaintOf(
+  project: ProjectData,
+  hide?: boolean,
+): GlossaryExportPaint | undefined {
+  if (hide) return undefined;
+  const links = project.glossaryLinks ?? [];
+  if (!links.length) return undefined;
+  return {
+    links,
+    colors: collectGlossaryColors(project.glossary ?? []),
+  };
 }
 
 function resolveExport(
@@ -85,7 +105,10 @@ export async function toLongPdf(
   const { numbered, title } = resolveExport(project, options);
   if (!numbered.length) throw new Error("没有可导出的内容");
 
-  const rawMd = numberedToMarkdown(numbered);
+  const rawMd = numberedToMarkdown(
+    numbered,
+    glossaryPaintOf(project, options.hideGlossaryStyles),
+  );
   const markdown = await rewriteMarkdownForDisplay(rawMd);
   const dataUrl = await mountAndCapturePng(markdown, title);
   return pngDataUrlToPdf(dataUrl);

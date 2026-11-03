@@ -113,6 +113,14 @@
   text-underline-offset: 2px;
 }
 
+.content :global(.wg-glossary-link) {
+  color: inherit;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--wg-accent) 22%, transparent);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--wg-accent) 45%, transparent);
+  border-radius: 2px;
+}
+
 .content :global(.react-renderer.node-image) {
   display: flex;
   justify-content: center;

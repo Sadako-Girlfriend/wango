@@ -8,11 +8,21 @@ import { isTauriRuntime, getAppDataDir, joinPath } from "./draftStore";
 
 export const SESSION_SCHEMA = 1 as const;
 
+export interface PersistedOpenedPage {
+  scope: "tree" | "glossary";
+  id: string;
+}
+
 export interface PersistedTab {
   id: string;
   project: ProjectData;
   selectedId: string | null;
+  selectionScope?: "tree" | "glossary";
+  glossarySelectedId?: string | null;
+  openedPages?: PersistedOpenedPage[];
+  openedDirty?: Record<string, true>;
   collapsedIds: Record<string, true>;
+  glossaryCollapsedIds?: Record<string, true>;
   searchQuery: string;
   filePath: string | null;
   revision: number;

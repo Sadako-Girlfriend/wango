@@ -24,12 +24,19 @@ interface HeaderProps {
   /** 请求处理最近项（弹窗：移出 / 永久删除） */
   onRemoveRecent: (entry: RecentEntry) => void;
   onNewFromTemplate: (pluginId: string) => void;
+  /** 从粘贴导入大纲（编辑态） */
+  onPasteImport?: () => void;
+  /** 从文件导入大纲（编辑态） */
+  onFileImport?: () => void;
   onImport: () => void;
   /** 有路径则覆盖；无路径则另存为 */
   onSave: () => void;
   /** 打开导出格式弹窗 */
   onOpenExport: () => void;
   onOpenSettings: () => void;
+  /** 编辑态：切换右侧 Agent */
+  agentOpen?: boolean;
+  onToggleAgent?: () => void;
   /** 返回 true 表示 API 已配置，可展开灵感菜单 */
   onInspireGate: () => boolean | Promise<boolean>;
   onInspireMode: (mode: InspireMode) => void;
@@ -48,10 +55,14 @@ export function Header({
   onOpenRecent,
   onRemoveRecent,
   onNewFromTemplate,
+  onPasteImport,
+  onFileImport,
   onImport,
   onSave,
   onOpenExport,
   onOpenSettings,
+  agentOpen = false,
+  onToggleAgent,
   onInspireGate,
   onInspireMode,
   inspirePhase = "idle",
@@ -284,37 +295,79 @@ export function Header({
             </div>
           )}
         </div>
+        {editorMode && onToggleAgent ? (
+          <button
+            type="button"
+            className={styles.btn}
+            data-active={agentOpen || undefined}
+            aria-pressed={agentOpen}
+            onClick={onToggleAgent}
+            title={agentOpen ? t("layout.collapseAgent") : t("layout.expandAgent")}
+          >
+            {t("agent.toggle")}
+          </button>
+        ) : null}
         <button type="button" className={styles.btn} onClick={onOpenSettings}>
           {t("header.settings")}
         </button>
+        {onFileImport && (
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={() => {
+              closeAll();
+              onFileImport();
+            }}
+          >
+            {t("header.fileImport")}
+          </button>
+        )}
+        {onPasteImport && (
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={() => {
+              closeAll();
+              onPasteImport();
+            }}
+          >
+            {t("header.pasteImport")}
+          </button>
+        )}
         {editorMode && (
           <>
-            {otherRecents.length > 0 && (
-              <div className={styles.menuWrap} ref={projRef}>
-                <button
-                  type="button"
-                  className={styles.btn}
-                  onClick={() => {
-                    setProjOpen((v) => !v);
-                    setInspireOpen(false);
-                    setTplOpen(false);
-                    setFileOpen(false);
-                  }}
+            <div className={styles.menuWrap} ref={projRef}>
+              <button
+                type="button"
+                className={styles.btn}
+                aria-expanded={projOpen}
+                aria-haspopup="menu"
+                onClick={() => {
+                  setProjOpen((v) => !v);
+                  setInspireOpen(false);
+                  setTplOpen(false);
+                  setFileOpen(false);
+                }}
+              >
+                {t("project.other")}
+              </button>
+              {projOpen && (
+                <div
+                  className={`${styles.menu} ${styles.menuScroll}`}
+                  role="menu"
                 >
-                  {t("project.other")}
-                </button>
-                {projOpen && (
-                  <div
-                    className={`${styles.menu} ${styles.menuScroll}`}
-                    role="menu"
-                  >
-                    {otherRecents.map((r) => (
+                  {otherRecents.length === 0 ? (
+                    <div className={styles.menuHint} role="note">
+                      {t("project.otherEmpty")}
+                    </div>
+                  ) : (
+                    otherRecents.map((r) => (
                       <div key={r.key} className={styles.menuRow} role="none">
                         <button
                           type="button"
                           role="menuitem"
                           className={styles.menuRowOpen}
-                          title={r.title}
+                          title={r.filePath || r.title}
                           onClick={() => {
                             onOpenRecent(r);
                             closeAll();
@@ -336,11 +389,22 @@ export function Header({
                           ×
                         </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                    ))
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={styles.menuItemAccent}
+                    onClick={() => {
+                      onImport();
+                      closeAll();
+                    }}
+                  >
+                    {t("header.open")}…
+                  </button>
+                </div>
+              )}
+            </div>
             <div className={styles.menuWrap} ref={tplRef}>
               <button
                 type="button"
@@ -405,6 +469,30 @@ export function Header({
                   >
                     {t("header.open")}
                   </button>
+                  {onFileImport && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onFileImport();
+                        closeAll();
+                      }}
+                    >
+                      {t("header.fileImport")}
+                    </button>
+                  )}
+                  {onPasteImport && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onPasteImport();
+                        closeAll();
+                      }}
+                    >
+                      {t("header.pasteImport")}
+                    </button>
+                  )}
                   <button
                     type="button"
                     role="menuitem"

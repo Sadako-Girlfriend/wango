@@ -55,15 +55,27 @@ interface TreePaneProps {
   onExpandNodes: (ids: string[]) => void;
   onMove: (id: string, parentId: string | null, index: number) => void;
   onAddChild: (parentId: string | null) => void;
-  onAddSibling: () => void;
+  onAddSibling: (afterId: string) => void;
   onCopy: (id: string) => void;
   onPaste: (afterId: string | null) => void;
   canPaste: boolean;
   onPromote: () => void;
   onDemote: () => void;
+  /** 释放子节点（父保留） */
+  onReleaseChildren: (id: string) => void;
+  /** 解散节点（父删除，子提升） */
+  onDissolve: (id: string) => void;
   onDelete: (id: string) => void;
+  /** 就地重命名标题（F2 / 双击） */
+  onRename: (id: string, title: string) => void;
   onSetPriority: (id: string, priority: NodePriority | null) => void;
   onSetLabels: (id: string, labels: string[]) => void;
+  /** 引用为词条 */
+  onReferenceGlossary?: (id: string) => void;
+  /** 复制为词条 */
+  onCopyGlossary?: (id: string) => void;
+  /** 大纲节点是否已被引用为词条（删除提示） */
+  isReferencedAsGlossary?: (id: string) => boolean;
 }
 
 interface CtxMenuState {
@@ -105,12 +117,23 @@ export function TreePane({
   canPaste,
   onPromote,
   onDemote,
+  onReleaseChildren,
+  onDissolve,
   onDelete,
+  onRename,
   onSetPriority,
   onSetLabels,
+  onReferenceGlossary,
+  onCopyGlossary,
+  isReferencedAsGlossary,
 }: TreePaneProps) {
   const { t } = useI18n();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  /** 自管双击：同节点在时限内点第二次 → 重命名（不依赖浏览器 dblclick，避免未选中时要点三次） */
+  const renameClickRef = useRef<{ id: string; at: number } | null>(null);
+  const RENAME_DOUBLE_MS = 500;
   const [overId, setOverId] = useState<string | null>(null);
   const [dropPlacement, setDropPlacement] = useState<DropPlacement | null>(
     null,
@@ -127,6 +150,8 @@ export function TreePane({
   } | null>(null);
   const [labelsEditId, setLabelsEditId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] =
+    useState<DeleteConfirmState | null>(null);
+  const [dissolveConfirm, setDissolveConfirm] =
     useState<DeleteConfirmState | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set());
   const locateSeenRef = useRef(locateKey);
@@ -362,6 +387,7 @@ export function TreePane({
   );
 
   const resetDrag = () => {
+    renameClickRef.current = null;
     setActiveId(null);
     setOverId(null);
     setDropPlacement(null);
@@ -467,11 +493,64 @@ export function TreePane({
     : null;
   const ctxPriority = ctxNode?.priority ?? null;
 
+  const beginRename = (id: string) => {
+    const node = findNodeById(sourceTree, id);
+    if (!node) return;
+    renameClickRef.current = null;
+    setCtxMenu(null);
+    setPrioSub(null);
+    onSelect(id);
+    setRenameDraft(node.title);
+    setRenamingId(id);
+  };
+
+  const commitRename = () => {
+    if (!renamingId) return;
+    const next = renameDraft.trim() || t("editor.nodeUntitled");
+    const node = findNodeById(sourceTree, renamingId);
+    if (node && next !== node.title) onRename(renamingId, next);
+    setRenamingId(null);
+    renameClickRef.current = null;
+  };
+
+  const cancelRename = () => {
+    setRenamingId(null);
+    renameClickRef.current = null;
+  };
+
+  /** 单击选中；同节点 500ms 内再点一次 → 重命名；超时自动作废第一次 */
+  const handleRowClick = (id: string) => {
+    if (renamingId) {
+      if (renamingId !== id) commitRename();
+      onSelect(id);
+      listRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    const now = Date.now();
+    const prev = renameClickRef.current;
+    if (prev && prev.id === id && now - prev.at <= RENAME_DOUBLE_MS) {
+      renameClickRef.current = null;
+      beginRename(id);
+      return;
+    }
+    renameClickRef.current = { id, at: now };
+    onSelect(id);
+    listRef.current?.focus({ preventScroll: true });
+  };
+
   const handleTreeKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (deleteConfirm) return;
+    // 重命名输入框自己处理按键
+    if (renamingId) return;
     const mod = e.ctrlKey || e.metaKey;
     const key = e.key.toLowerCase();
 
+    if (e.key === "F2") {
+      if (!selectedId) return;
+      e.preventDefault();
+      beginRename(selectedId);
+      return;
+    }
     if (mod && key === "c") {
       if (!selectedId) return;
       e.preventDefault();
@@ -503,7 +582,13 @@ export function TreePane({
         >
           {t("tree.child")}
         </button>
-        <button type="button" className={styles.toolBtn} onClick={onAddSibling}>
+        <button
+          type="button"
+          className={styles.toolBtn}
+          onClick={() => {
+            if (selectedId) onAddSibling(selectedId);
+          }}
+        >
           {t("tree.sibling")}
         </button>
         <button type="button" className={styles.toolBtn} onClick={onPromote}>
@@ -584,6 +669,7 @@ export function TreePane({
           className={styles.list}
           role="tree"
           tabIndex={0}
+          data-wg-focus="tree"
           data-dragging={activeId || undefined}
           onKeyDown={handleTreeKeyDown}
           onMouseDown={() => {
@@ -601,17 +687,19 @@ export function TreePane({
                 depth={0}
                 selectedId={selectedId}
                 collapsedIds={collapsedIds}
-                dragEnabled
+                dragEnabled={!renamingId}
                 matchQuery={q}
                 matchIds={matchSet}
                 currentMatchId={currentMatchId}
                 enteringIds={enteringIds}
                 overId={overId}
                 dropPlacement={dropPlacement}
-                onSelect={(id) => {
-                  onSelect(id);
-                  listRef.current?.focus();
-                }}
+                renamingId={renamingId}
+                renameDraft={renameDraft}
+                onRenameDraftChange={setRenameDraft}
+                onCommitRename={commitRename}
+                onCancelRename={cancelRename}
+                onSelect={handleRowClick}
                 onToggle={onToggle}
                 onContextMenu={handleContextMenu}
               />
@@ -655,6 +743,27 @@ export function TreePane({
                 }}
               >
                 {t("tree.menuAddChild")}
+              </button>
+              <button
+                type="button"
+                className={styles.ctxItem}
+                role="menuitem"
+                onMouseEnter={schedulePriorityClose}
+                onClick={() => {
+                  onAddSibling(ctxMenu.nodeId);
+                  setCtxMenu(null);
+                }}
+              >
+                {t("tree.menuAddSibling")}
+              </button>
+              <button
+                type="button"
+                className={styles.ctxItem}
+                role="menuitem"
+                onMouseEnter={schedulePriorityClose}
+                onClick={() => beginRename(ctxMenu.nodeId)}
+              >
+                {t("tree.menuRename")}
               </button>
               <button
                 type="button"
@@ -725,6 +834,84 @@ export function TreePane({
               >
                 {t("tree.menuLabels")}
               </button>
+              {onReferenceGlossary || onCopyGlossary ? (
+                <>
+                  <div className={styles.ctxSep} role="separator" />
+                  {onReferenceGlossary ? (
+                    <button
+                      type="button"
+                      className={styles.ctxItem}
+                      role="menuitem"
+                      onMouseEnter={schedulePriorityClose}
+                      onClick={() => {
+                        onReferenceGlossary(ctxMenu.nodeId);
+                        setCtxMenu(null);
+                      }}
+                    >
+                      {t("tree.menuRefGlossary")}
+                    </button>
+                  ) : null}
+                  {onCopyGlossary ? (
+                    <button
+                      type="button"
+                      className={styles.ctxItem}
+                      role="menuitem"
+                      onMouseEnter={schedulePriorityClose}
+                      onClick={() => {
+                        onCopyGlossary(ctxMenu.nodeId);
+                        setCtxMenu(null);
+                      }}
+                    >
+                      {t("tree.menuCopyGlossary")}
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
+              {(() => {
+                const ctxNode = findNodeById(sourceTree, ctxMenu.nodeId);
+                const childCount = ctxNode?.children.length ?? 0;
+                if (childCount <= 0) return null;
+                return (
+                  <>
+                    <div className={styles.ctxSep} role="separator" />
+                    <button
+                      type="button"
+                      className={styles.ctxItem}
+                      role="menuitem"
+                      title={t("tree.releaseChildrenHint")}
+                      onMouseEnter={schedulePriorityClose}
+                      onClick={() => {
+                        onReleaseChildren(ctxMenu.nodeId);
+                        setCtxMenu(null);
+                      }}
+                    >
+                      {t("tree.menuReleaseChildren")}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.ctxItem}
+                      role="menuitem"
+                      title={t("tree.dissolveHint")}
+                      onMouseEnter={schedulePriorityClose}
+                      onClick={() => {
+                        const n = findNodeById(sourceTree, ctxMenu.nodeId);
+                        if (!n || n.children.length === 0) {
+                          setCtxMenu(null);
+                          return;
+                        }
+                        setDissolveConfirm({
+                          id: n.id,
+                          title: n.title,
+                          descendantCount: n.children.length,
+                        });
+                        setCtxMenu(null);
+                      }}
+                    >
+                      {t("tree.menuDissolve")}
+                    </button>
+                  </>
+                );
+              })()}
               <div className={styles.ctxSep} role="separator" />
               <button
                 type="button"
@@ -823,14 +1010,23 @@ export function TreePane({
               {t("tree.deleteConfirmTitle")}
             </h2>
             <p className={styles.confirmBody}>
-              {deleteConfirm.descendantCount > 0
-                ? t("tree.deleteConfirmBodyWithChildren", {
-                    title: deleteConfirm.title,
-                    count: String(deleteConfirm.descendantCount),
-                  })
-                : t("tree.deleteConfirmBody", {
-                    title: deleteConfirm.title,
-                  })}
+              {isReferencedAsGlossary?.(deleteConfirm.id)
+                ? deleteConfirm.descendantCount > 0
+                  ? t("tree.deleteReferencedBodyWithChildren", {
+                      title: deleteConfirm.title,
+                      count: String(deleteConfirm.descendantCount),
+                    })
+                  : t("tree.deleteReferencedBody", {
+                      title: deleteConfirm.title,
+                    })
+                : deleteConfirm.descendantCount > 0
+                  ? t("tree.deleteConfirmBodyWithChildren", {
+                      title: deleteConfirm.title,
+                      count: String(deleteConfirm.descendantCount),
+                    })
+                  : t("tree.deleteConfirmBody", {
+                      title: deleteConfirm.title,
+                    })}
             </p>
             <div className={styles.confirmActions}>
               <button
@@ -849,6 +1045,51 @@ export function TreePane({
                 }}
               >
                 {t("tree.deleteConfirmOk")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {dissolveConfirm ? (
+        <div
+          className={styles.confirmBackdrop}
+          role="presentation"
+          onClick={() => setDissolveConfirm(null)}
+        >
+          <div
+            className={styles.confirmPanel}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wg-tree-dissolve-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="wg-tree-dissolve-title" className={styles.confirmTitle}>
+              {t("tree.dissolveConfirmTitle")}
+            </h2>
+            <p className={styles.confirmBody}>
+              {t("tree.dissolveConfirmBody", {
+                title: dissolveConfirm.title,
+                count: String(dissolveConfirm.descendantCount),
+              })}
+            </p>
+            <div className={styles.confirmActions}>
+              <button
+                type="button"
+                className={styles.confirmGhost}
+                onClick={() => setDissolveConfirm(null)}
+              >
+                {t("tree.deleteConfirmCancel")}
+              </button>
+              <button
+                type="button"
+                className={styles.confirmDanger}
+                onClick={() => {
+                  onDissolve(dissolveConfirm.id);
+                  setDissolveConfirm(null);
+                }}
+              >
+                {t("tree.dissolveConfirmOk")}
               </button>
             </div>
           </div>

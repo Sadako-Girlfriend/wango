@@ -6,7 +6,8 @@
  */
 
 import JSZip from "jszip";
-import type { ProjectData, WangoFile } from "@/domain";
+import type { AgentSession, AgentThread, ProjectData, WangoFile } from "@/domain";
+import { normalizeAgentSession } from "@/desktop/agentPersist";
 import { decodeJsonWango } from "./jsonCodec";
 import {
   CURRENT_WANGO_VERSION,
@@ -19,10 +20,16 @@ export interface AttachmentBlob {
   data: ArrayBuffer | Uint8Array;
 }
 
+export type EncodeWangoOptions = {
+  /** 勾选导出时写入；日常保存不传 */
+  agent?: AgentSession | AgentThread | null;
+};
+
 /** 打成 .wango ZIP 字节（无论是否有附件一律走 ZIP） */
 export async function encodePackageWango(
   projectData: ProjectData,
   files: AttachmentBlob[] = [],
+  options?: EncodeWangoOptions,
 ): Promise<Uint8Array> {
   const zip = new JSZip();
   const manifest: WangoFile = {
@@ -30,13 +37,17 @@ export async function encodePackageWango(
     exportedAt: new Date().toISOString(),
     projectData,
   };
+  if (options?.agent) {
+    const session = normalizeAgentSession(options.agent);
+    if (session.chats.some((c) => c.messages.length > 0)) {
+      manifest.agent = session;
+    }
+  }
   zip.file("project.json", JSON.stringify(manifest, null, 2));
   for (const file of files) {
-    // 统一正斜杠；文件名可含中文与空格
     const rel = file.relPath.replace(/\\/g, "/");
     zip.file(rel, file.data);
   }
-  // UTF-8 文件名，避免中文附件在解压后乱码
   const buf = await zip.generateAsync({
     type: "uint8array",
     compression: "DEFLATE",
@@ -48,6 +59,7 @@ export async function encodePackageWango(
 export async function decodePackageWango(bytes: ArrayBuffer | Uint8Array): Promise<{
   projectData: ProjectData;
   files: AttachmentBlob[];
+  agent: AgentSession | null;
 }> {
   const zip = await JSZip.loadAsync(bytes);
   const projectFile = zip.file("project.json");
@@ -59,7 +71,12 @@ export async function decodePackageWango(bytes: ArrayBuffer | Uint8Array): Promi
   if (!isWangoFile(parsed)) {
     throw new Error("project.json 不是合法 WangoFile");
   }
-  const projectData = migrateWangoFile(parsed).projectData;
+  const migrated = migrateWangoFile(parsed);
+  const projectData = migrated.projectData;
+  const agentRaw = (parsed as WangoFile).agent;
+  const agent = agentRaw ? normalizeAgentSession(agentRaw) : null;
+  const agentOut =
+    agent && agent.chats.some((c) => c.messages.length > 0) ? agent : null;
 
   const files: AttachmentBlob[] = [];
   const tasks: Promise<void>[] = [];
@@ -73,7 +90,7 @@ export async function decodePackageWango(bytes: ArrayBuffer | Uint8Array): Promi
     );
   });
   await Promise.all(tasks);
-  return { projectData, files };
+  return { projectData, files, agent: agentOut };
 }
 
 /** 根据魔数粗判是否 ZIP（PK\\x03\\x04） */
@@ -95,6 +112,7 @@ export async function decodeWangoBytes(
 ): Promise<{
   projectData: ProjectData;
   files: AttachmentBlob[];
+  agent: AgentSession | null;
 }> {
   const view =
     bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -102,5 +120,5 @@ export async function decodeWangoBytes(
     return decodePackageWango(view);
   }
   const text = new TextDecoder("utf-8").decode(view);
-  return { projectData: decodeJsonWango(text), files: [] };
+  return { projectData: decodeJsonWango(text), files: [], agent: null };
 }
