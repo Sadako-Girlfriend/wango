@@ -22,6 +22,37 @@ Version **0.3.39** · Windows desktop (Tauri) · [Apache-2.0](./LICENSE)
 
 ---
 
+## How it grows (no full blueprint required)
+
+WanGou does **not** demand a finished outline before you start. Real use looks like this: drop the first layer of ideas, drill down, insert in the middle — structure **emerges**. When reshaping the tree is cheap, good ideas stop dying because “reordering the outline is too annoying.”
+
+### Scenario 1: A login page (product / engineering)
+
+1. Start tiny: `1.1 Login form`, `1.2 Login button` — a minimal skeleton.  
+2. Validation appears: under `1.1`, add email/password rules; under the button, add a security check — stay inside one branch; fold the rest.  
+3. Suddenly you need sign-up: **insert** `1.2 Register` between form and button; the old login button becomes `1.3`.  
+4. Versus Word: auto-numbering often breaks after inserts. Versus pure bi-directional notes: “wedge this between A and B” is rarely a natural gesture.  
+
+The same motion works for PRDs, API checklists, and module breakdowns.
+
+### Scenario 2: A chapter beat (fiction / screenplay)
+
+1. Create only `In danger` — no need to outline the whole volume first.  
+2. Write detail under that node; add children (setting, antagonist, stakes).  
+3. Inspiration hits: **insert** `Heroine intervenes` in the middle, then drag `Counterattack` after — numbering follows; prose stays attached to each node.  
+
+### Scenario 3: One lesson plan (teaching)
+
+1. Start with `Warm-up` → child `Ask a question`.  
+2. Remember the board objective: insert it earlier; everything after renumbers.  
+3. Concepts reused across lessons can live in the glossary, with in-body scan links so terms stay consistent.  
+
+> In short: WanGou fits people whose ideas are messy, whose logic will change, and who need structure to grow while they write — not people forced into a perfect top-down design first.
+
+After install, open the **sample guide** on the home screen and try the same insert / deepen / reorder moves yourself.
+
+---
+
 ## Screenshots
 
 ### Home

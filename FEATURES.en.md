@@ -6,6 +6,8 @@
 
 WanGou is a **local-first** tree-structured writing / knowledge-decomposition tool: organize with a tree, write details in rich text, export for people or AI, and optionally call OpenAI-compatible APIs for **Inspiration**.
 
+**No full blueprint required.** Typical flow: start with a tiny skeleton → deepen under a node → insert a sibling in the middle when an idea appears; numbering follows. Login pages, chapter beats, and lesson plans all grow this way. Full scenario write-ups: [README.en.md](./README.en.md#how-it-grows-no-full-blueprint-required).
+
 ---
 
 ## 1. Projects & files
