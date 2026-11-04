@@ -22,34 +22,101 @@ Version **0.3.39** · Windows desktop (Tauri) · [Apache-2.0](./LICENSE)
 
 ---
 
-## How it grows (no full blueprint required)
+## How we use it
 
-WanGou does **not** demand a finished outline before you start. Real use looks like this: drop the first layer of ideas, drill down, insert in the middle — structure **emerges**. When reshaping the tree is cheap, good ideas stop dying because “reordering the outline is too annoying.”
+You don’t need a finished outline up front. The left tree holds order and hierarchy; the right pane holds the detail for that node. Add nodes as you think of them; insert in the middle when something’s missing — numbers update as you go.
 
 ### Scenario 1: A login page (product / engineering)
 
-1. Start tiny: `1.1 Login form`, `1.2 Login button` — a minimal skeleton.  
-2. Validation appears: under `1.1`, add email/password rules; under the button, add a security check — stay inside one branch; fold the rest.  
-3. Suddenly you need sign-up: **insert** `1.2 Register` between form and button; the old login button becomes `1.3`.  
-4. Versus Word: auto-numbering often breaks after inserts. Versus pure bi-directional notes: “wedge this between A and B” is rarely a natural gesture.  
+You’re writing the “user login” slice. At first you only have two pieces:
 
-The same motion works for PRDs, API checklists, and module breakdowns.
+```
+1 User login
+  1.1 Login form
+  1.2 Login button
+```
+
+Open `1.1` and write fields in the body: email, password, “remember me”. Open `1.2` and write which API runs on click, where success goes, what failure shows.
+
+Then validation and anti-spam show up. Hang them under the right parents; fold the rest:
+
+```
+1 User login
+  1.1 Login form
+    1.1.1 Email format
+    1.1.2 Password rules (length / empty)
+  1.2 Login button
+    1.2.1 Click debounce
+    1.2.2 Retry copy on failure
+```
+
+Halfway through you remember there’s no sign-up entry. Don’t reshuffle the whole page — insert a sibling between `1.1` and the old login button:
+
+```
+1 User login
+  1.1 Login form
+    …
+  1.2 Register entry      ← newly inserted
+    1.2.1 Go to register
+    1.2.2 Back to login if already registered
+  1.3 Login button        ← was 1.2; renumbered
+    …
+```
+
+Whatever you already wrote under “Login button” stays put — no cut-and-paste. Same rhythm for PRDs, module breakdowns, and API lists: rough first, detail later, insert anytime.
 
 ### Scenario 2: A chapter beat (fiction / screenplay)
 
-1. Create only `In danger` — no need to outline the whole volume first.  
-2. Write detail under that node; add children (setting, antagonist, stakes).  
-3. Inspiration hits: **insert** `Heroine intervenes` in the middle, then drag `Counterattack` after — numbering follows; prose stays attached to each node.  
+Skip outlining the whole volume. This chapter is “hero in danger” — create that node and draft the scene on the right: place, antagonist, what leverage he still has.
+
+When the block gets long, split it:
+
+```
+3 Chapter 3
+  3.1 In danger
+    3.1.1 Rainy dock at night
+    3.1.2 Antagonist shows the stakes
+    3.1.3 Hero backed into a corner
+```
+
+You decide someone else should intervene. Insert between `3.1.2` and `3.1.3`:
+
+```
+  3.1 In danger
+    3.1.1 Rainy dock at night
+    3.1.2 Antagonist shows the stakes
+    3.1.3 Heroine intervenes   ← new
+    3.1.4 Counterattack        ← was 3.1.3
+```
+
+Each beat keeps its own body text: reorder by dragging the tree, not by tearing up a single long chapter. Recurring names and places can go in the glossary so scan-links keep wording consistent.
 
 ### Scenario 3: One lesson plan (teaching)
 
-1. Start with `Warm-up` → child `Ask a question`.  
-2. Remember the board objective: insert it earlier; everything after renumbers.  
-3. Concepts reused across lessons can live in the glossary, with in-body scan links so terms stay consistent.  
+Take a “fraction addition” lesson. You might start with only the warm-up:
 
-> In short: WanGou fits people whose ideas are messy, whose logic will change, and who need structure to grow while they write — not people forced into a perfect top-down design first.
+```
+2 Lesson 2 — Fraction addition
+  2.1 Warm-up
+    2.1.1 Halves in everyday life
+```
 
-After install, open the **sample guide** on the home screen and try the same insert / deepen / reorder moves yourself.
+Then you remember the objective should come first, and you still need teach + practice:
+
+```
+2 Lesson 2 — Fraction addition
+  2.1 Lesson goals           ← inserted at the top
+  2.2 Warm-up
+    2.2.1 Halves in everyday life
+  2.3 New content
+    2.3.1 Same-denominator add
+    2.3.2 Common mistakes
+  2.4 Practice & wrap-up
+```
+
+Board notes and question prompts live in each node’s body. Terms you’ll reuse next week (“same denominator”, “common denominator”) go in the glossary so you can jump back and keep the wording aligned.
+
+After install, open the **sample guide** on the home screen and try create, nest, insert-in-between, and drag.
 
 ---
 
