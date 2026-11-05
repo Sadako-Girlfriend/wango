@@ -4,6 +4,47 @@ All notable user-facing changes are listed here.
 Format inspired by [Keep a Changelog](https://keepachangelog.com/).  
 版本号与 `package.json` / `src-tauri/tauri.conf.json` 一致。
 
+## 0.3.45 — 2026-11-06
+
+### Changed
+- Narrow window: when three panes cannot dock, **Agent overlays** the editor (left tree stays)
+
+### Removed
+- Auto-collapsing the left tree / temporarily hiding Agent just to free horizontal space
+
+## 0.3.44 — 2026-11-06
+
+### Fixed
+- Header Agent toggle when the panel was squeezed: clicking no longer looked like a no-op / close-only
+
+## 0.3.43 — 2026-11-06
+
+### Changed
+- Header: **New** menu (template / from file / from paste); **File** menu (open / save / export)
+
+### Fixed
+- Narrow header: dropdowns were clipped by `overflow-x: auto`, so New-from-template / File looked unclickable
+
+## 0.3.42 — 2026-11-06
+
+### Fixed
+- Narrow window layout: keep a minimum main editor width; shrink side panes first
+- (Superseded for Agent by 0.3.45 overlay behavior)
+
+## 0.3.41 — 2026-11-06
+
+### Added
+- Inspiration prepare overlay: streaming **thinking** (when the gateway sends reasoning) + **Cancel** on the mask
+
+### Fixed
+- Deep models no longer feel stuck behind a full-screen overlay with no cancel / no progress
+
+## 0.3.40 — 2026-11-06
+
+### Fixed
+- **Inspiration** post-process: split `## x.y` stuck in parent bodies into child nodes; lift chapters wrongly nested under a single「总览」; strip handwritten numbers from titles
+- Stronger inspire prompts for tree shape (one section = one node; chapters as siblings)
+
 ## 0.3.39 — 2026-11-04
 
 ### Added

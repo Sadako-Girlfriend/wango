@@ -85,4 +85,20 @@ describe("serializeInspirePlayback", () => {
     ]);
     expect(out.filter((e) => e.type === "delta")).toHaveLength(0);
   });
+
+  it("yields reasoning before the first node", async () => {
+    const out = await collect(
+      fromArray([
+        { type: "reasoning", text: "想" },
+        { type: "reasoning", text: "一下" },
+        { type: "node", id: "n1", parentId: null, title: "A" },
+        { type: "done" },
+      ]),
+    );
+    expect(out.slice(0, 2)).toEqual([
+      { type: "reasoning", text: "想" },
+      { type: "reasoning", text: "一下" },
+    ]);
+    expect(out[2]).toMatchObject({ type: "node", id: "n1" });
+  });
 });

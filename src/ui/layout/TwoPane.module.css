@@ -12,6 +12,7 @@
 }
 
 .body {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -55,13 +56,64 @@
 }
 
 .body[data-tree-collapsed] .paneLeft,
-.body:not([data-agent-open]) .paneAgent {
+.body:not([data-agent-open]):not([data-agent-overlay]) .paneAgent {
   pointer-events: none;
 }
 
 .paneMain {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* 窄窗：Agent 叠在正文右侧，不挤左树 */
+.agentOverlay {
+  position: absolute;
+  top: 0;
+  right: 10px;
+  bottom: 10px;
+  z-index: 30;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  pointer-events: auto;
+  filter: drop-shadow(0 8px 24px rgb(0 0 0 / 0.18));
+}
+
+.agentOverlay .paneAgent {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-shadow: none;
+}
+
+.overlaySplit {
+  position: relative;
+  flex: 0 0 10px;
+  margin: 0 2px 0 0;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 2;
+  align-self: stretch;
+}
+
+.overlaySplit::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--wg-border-subtle);
+}
+
+.overlaySplit:hover::before,
+.overlaySplit[data-active]::before {
+  background: var(--wg-accent);
+  width: 2px;
+}
+
+.overlaySplit .toggleBtn {
+  opacity: 1;
 }
 
 .vSplit {

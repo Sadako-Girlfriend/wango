@@ -1,5 +1,6 @@
 /**
  * 三栏壳：左树可拖宽可收起；右 Agent 可拖宽可收起（首启默认开）。
+ * 窄窗并排放不下时 Agent 叠在正文上（不挤掉左树）。
  */
 
 import {
@@ -17,12 +18,18 @@ import {
   clampTreePaneWidth,
   getAppSettings,
   loadAppSettings,
+  MAIN_PANE_WIDTH_MIN,
   saveAppSettings,
   TREE_PANE_WIDTH_DEFAULT,
   TREE_PANE_WIDTH_MAX,
   TREE_PANE_WIDTH_MIN,
 } from "@/desktop/appSettings";
 import { useI18n } from "@/i18n/useI18n";
+import {
+  fitSideWidths,
+  PANE_BODY_PAD_X,
+  PANE_SPLIT_SLOT,
+} from "./paneFit";
 import styles from "./TwoPane.module.css";
 
 interface TwoPaneProps {
@@ -38,6 +45,10 @@ interface TwoPaneProps {
   /** 外部也可切换 Agent 开合（Header） */
   agentOpen?: boolean;
   onAgentOpenChange?: (open: boolean) => void;
+  /** 顶栏高亮用：面板是否真正可见 */
+  onAgentVisibleChange?: (visible: boolean) => void;
+  /** 递增以触发一次 Agent 开关（与侧栏按钮同一套逻辑） */
+  agentToggleRequest?: number;
 }
 
 export function TwoPane({
@@ -50,26 +61,43 @@ export function TwoPane({
   activeTabId = null,
   agentOpen: agentOpenProp,
   onAgentOpenChange,
+  onAgentVisibleChange,
+  agentToggleRequest = 0,
 }: TwoPaneProps) {
   const { t } = useI18n();
+  /** 用户偏好宽度（拖拽写入）；窄窗显示宽度可能更小 */
+  const [preferTree, setPreferTree] = useState(TREE_PANE_WIDTH_DEFAULT);
+  const [preferAgent, setPreferAgent] = useState(AGENT_PANE_WIDTH_DEFAULT);
   const [treeWidth, setTreeWidth] = useState(TREE_PANE_WIDTH_DEFAULT);
-  const [treeCollapsed, setTreeCollapsed] = useState(false);
   const [agentWidth, setAgentWidth] = useState(AGENT_PANE_WIDTH_DEFAULT);
+  const [treeCollapsed, setTreeCollapsed] = useState(false);
   const [agentOpenLocal, setAgentOpenLocal] = useState(true);
+  const [agentOverlay, setAgentOverlay] = useState(false);
   const agentOpen =
     agentOpenProp !== undefined ? agentOpenProp : agentOpenLocal;
+  const agentVisible = Boolean(agent && agentOpen);
+  const agentDocked = agentVisible && !agentOverlay;
   const [dragging, setDragging] = useState<"tree" | "agent" | null>(null);
   const [ready, setReady] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const preferTreeRef = useRef(preferTree);
+  const preferAgentRef = useRef(preferAgent);
   const treeWidthRef = useRef(treeWidth);
   const agentWidthRef = useRef(agentWidth);
   const treeCollapsedRef = useRef(treeCollapsed);
   const agentOpenRef = useRef(agentOpen);
+  const agentOverlayRef = useRef(agentOverlay);
+  const hasAgentRef = useRef(Boolean(agent));
   const prevTabIdRef = useRef<string | null | undefined>(undefined);
+  const lastToggleRequestRef = useRef(0);
+  preferTreeRef.current = preferTree;
+  preferAgentRef.current = preferAgent;
   treeWidthRef.current = treeWidth;
   agentWidthRef.current = agentWidth;
   treeCollapsedRef.current = treeCollapsed;
   agentOpenRef.current = agentOpen;
+  agentOverlayRef.current = agentOverlay;
+  hasAgentRef.current = Boolean(agent);
 
   const persist = useCallback(
     (next: {
@@ -100,26 +128,51 @@ export function TwoPane({
     [],
   );
 
+  const applyFit = useCallback((bodyWidth: number) => {
+    const fitted = fitSideWidths({
+      bodyWidth,
+      preferTree: preferTreeRef.current,
+      preferAgent: preferAgentRef.current,
+      treeCollapsed: treeCollapsedRef.current,
+      agentWanted: hasAgentRef.current && agentOpenRef.current,
+    });
+    setTreeWidth(
+      treeCollapsedRef.current ? preferTreeRef.current : fitted.tree,
+    );
+    setAgentWidth(fitted.agent || preferAgentRef.current);
+    setAgentOverlay(fitted.overlayAgent);
+    agentOverlayRef.current = fitted.overlayAgent;
+  }, []);
+
   const setAgentOpen = useCallback(
     (open: boolean) => {
       if (onAgentOpenChange) onAgentOpenChange(open);
       else setAgentOpenLocal(open);
       persist({ agentOpen: open });
+      requestAnimationFrame(() => {
+        const w = bodyRef.current?.getBoundingClientRect().width;
+        if (w) applyFit(w);
+      });
     },
-    [onAgentOpenChange, persist],
+    [onAgentOpenChange, persist, applyFit],
   );
 
   useEffect(() => {
     let cancelled = false;
     void loadAppSettings().then((s) => {
       if (cancelled) return;
+      setPreferTree(s.treePaneWidth);
+      setPreferAgent(s.agentPaneWidth);
       setTreeWidth(s.treePaneWidth);
       setTreeCollapsed(s.treePaneCollapsed);
       setAgentWidth(s.agentPaneWidth);
       setAgentOpenLocal(s.agentPaneOpen);
       if (onAgentOpenChange) onAgentOpenChange(s.agentPaneOpen);
       requestAnimationFrame(() => {
-        if (!cancelled) setReady(true);
+        if (cancelled) return;
+        const w = bodyRef.current?.getBoundingClientRect().width;
+        if (w) applyFit(w);
+        setReady(true);
       });
     });
     return () => {
@@ -130,6 +183,18 @@ export function TwoPane({
   }, []);
 
   useEffect(() => {
+    const body = bodyRef.current;
+    if (!body || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w == null || dragging) return;
+      applyFit(w);
+    });
+    ro.observe(body);
+    return () => ro.disconnect();
+  }, [applyFit, dragging, fullPage]);
+
+  useEffect(() => {
     const prev = prevTabIdRef.current;
     prevTabIdRef.current = activeTabId;
     if (prev === undefined || prev === activeTabId) return;
@@ -137,17 +202,36 @@ export function TwoPane({
     if (!treeCollapsedRef.current) return;
     setTreeCollapsed(false);
     persist({ treeCollapsed: false });
-  }, [activeTabId, persist]);
+    requestAnimationFrame(() => {
+      const w = bodyRef.current?.getBoundingClientRect().width;
+      if (w) applyFit(w);
+    });
+  }, [activeTabId, persist, applyFit]);
 
   const toggleTree = useCallback(() => {
     const next = !treeCollapsedRef.current;
     setTreeCollapsed(next);
     persist({ treeCollapsed: next });
-  }, [persist]);
+    requestAnimationFrame(() => {
+      const w = bodyRef.current?.getBoundingClientRect().width;
+      if (w) applyFit(w);
+    });
+  }, [persist, applyFit]);
 
   const toggleAgent = useCallback(() => {
     setAgentOpen(!agentOpenRef.current);
   }, [setAgentOpen]);
+
+  useEffect(() => {
+    onAgentVisibleChange?.(agentVisible);
+  }, [agentVisible, onAgentVisibleChange]);
+
+  useEffect(() => {
+    if (!agentToggleRequest || agentToggleRequest === lastToggleRequestRef.current)
+      return;
+    lastToggleRequestRef.current = agentToggleRequest;
+    toggleAgent();
+  }, [agentToggleRequest, toggleAgent]);
 
   useEffect(() => {
     if (!dragging) return;
@@ -156,32 +240,71 @@ export function TwoPane({
       if (!body) return;
       const rect = body.getBoundingClientRect();
       if (dragging === "tree") {
+        const agentSlot = agentDocked ? agentWidthRef.current : 0;
+        const splits = 1 + (agentDocked ? 1 : 0);
         const maxByBody = Math.max(
           TREE_PANE_WIDTH_MIN,
-          Math.min(TREE_PANE_WIDTH_MAX, rect.width - 360),
+          Math.min(
+            TREE_PANE_WIDTH_MAX,
+            rect.width -
+              PANE_BODY_PAD_X -
+              splits * PANE_SPLIT_SLOT -
+              agentSlot -
+              MAIN_PANE_WIDTH_MIN,
+          ),
         );
         const next = Math.min(
           maxByBody,
           Math.max(TREE_PANE_WIDTH_MIN, Math.round(e.clientX - rect.left)),
         );
+        setPreferTree(next);
         setTreeWidth(next);
         return;
       }
       const fromRight = rect.right - e.clientX;
+      if (agentOverlayRef.current) {
+        const maxByBody = Math.max(
+          AGENT_PANE_WIDTH_MIN,
+          Math.min(AGENT_PANE_WIDTH_MAX, rect.width - PANE_BODY_PAD_X - 24),
+        );
+        const next = Math.min(
+          maxByBody,
+          Math.max(AGENT_PANE_WIDTH_MIN, Math.round(fromRight - 10)),
+        );
+        setPreferAgent(next);
+        setAgentWidth(next);
+        return;
+      }
+      const treeSlot = treeCollapsedRef.current ? 0 : treeWidthRef.current;
       const maxByBody = Math.max(
         AGENT_PANE_WIDTH_MIN,
-        Math.min(AGENT_PANE_WIDTH_MAX, rect.width - 360),
+        Math.min(
+          AGENT_PANE_WIDTH_MAX,
+          rect.width -
+            PANE_BODY_PAD_X -
+            2 * PANE_SPLIT_SLOT -
+            treeSlot -
+            MAIN_PANE_WIDTH_MIN,
+        ),
       );
       const next = Math.min(
         maxByBody,
         Math.max(AGENT_PANE_WIDTH_MIN, Math.round(fromRight)),
       );
+      setPreferAgent(next);
       setAgentWidth(next);
     };
     const onUp = () => {
-      if (dragging === "tree") persist({ treeWidth: treeWidthRef.current });
-      else persist({ agentWidth: agentWidthRef.current });
+      if (dragging === "tree") {
+        persist({ treeWidth: preferTreeRef.current });
+      } else {
+        persist({ agentWidth: preferAgentRef.current });
+      }
       setDragging(null);
+      requestAnimationFrame(() => {
+        const w = bodyRef.current?.getBoundingClientRect().width;
+        if (w) applyFit(w);
+      });
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -189,10 +312,58 @@ export function TwoPane({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [dragging, persist]);
+  }, [dragging, persist, applyFit, agentDocked]);
 
   const treeClip = treeCollapsed ? 0 : treeWidth;
-  const agentClip = agent && agentOpen ? agentWidth : 0;
+  const agentClip = agentDocked ? agentWidth : 0;
+  const overlayWidth = Math.max(agentWidth, AGENT_PANE_WIDTH_MIN);
+
+  const agentResizeSplit = (
+    collapsed: boolean,
+    overlay: boolean,
+  ) => (
+    <div
+      className={overlay ? styles.overlaySplit : styles.vSplit}
+      data-active={dragging === "agent" || undefined}
+      data-collapsed={collapsed || undefined}
+      onPointerDown={(e) => {
+        if (e.button !== 0 || !agentOpenRef.current) return;
+        e.preventDefault();
+        setDragging("agent");
+        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      }}
+      onDoubleClick={(e) => {
+        e.preventDefault();
+        toggleAgent();
+      }}
+      role="separator"
+      aria-orientation="vertical"
+      title={
+        agentVisible
+          ? t("layout.resizeAgentHint")
+          : t("layout.expandAgent")
+      }
+    >
+      <button
+        type="button"
+        className={styles.toggleBtn}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleAgent();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        title={
+          agentVisible ? t("layout.collapseAgent") : t("layout.expandAgent")
+        }
+        aria-label={
+          agentVisible ? t("layout.collapseAgent") : t("layout.expandAgent")
+        }
+        aria-expanded={agentVisible}
+      >
+        {agentVisible ? "›" : "‹"}
+      </button>
+    </div>
+  );
 
   return (
     <div className={styles.shell}>
@@ -205,7 +376,8 @@ export function TwoPane({
           className={styles.body}
           ref={bodyRef}
           data-tree-collapsed={treeCollapsed || undefined}
-          data-agent-open={agent && agentOpen ? true : undefined}
+          data-agent-open={agentVisible ? true : undefined}
+          data-agent-overlay={agentOverlay && agentVisible ? true : undefined}
           data-dragging={dragging || undefined}
           data-ready={ready || undefined}
         >
@@ -267,65 +439,37 @@ export function TwoPane({
           <main className={styles.paneMain}>{workspace}</main>
 
           {agent ? (
-            <>
-              <div
-                className={styles.vSplit}
-                data-active={dragging === "agent" || undefined}
-                data-collapsed={!agentOpen || undefined}
-                onPointerDown={(e) => {
-                  if (e.button !== 0 || !agentOpenRef.current) return;
-                  e.preventDefault();
-                  setDragging("agent");
-                  (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-                }}
-                onDoubleClick={(e) => {
-                  e.preventDefault();
-                  toggleAgent();
-                }}
-                role="separator"
-                aria-orientation="vertical"
-                title={
-                  agentOpen
-                    ? t("layout.resizeAgentHint")
-                    : t("layout.expandAgent")
-                }
-              >
-                <button
-                  type="button"
-                  className={styles.toggleBtn}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleAgent();
-                  }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  title={
-                    agentOpen
-                      ? t("layout.collapseAgent")
-                      : t("layout.expandAgent")
-                  }
-                  aria-label={
-                    agentOpen
-                      ? t("layout.collapseAgent")
-                      : t("layout.expandAgent")
-                  }
-                  aria-expanded={agentOpen}
+            agentOverlay ? (
+              agentVisible ? (
+                <div
+                  className={styles.agentOverlay}
+                  style={{ width: overlayWidth }}
                 >
-                  {agentOpen ? "›" : "‹"}
-                </button>
-              </div>
-              <div
-                className={styles.rightClip}
-                style={{ width: agentClip }}
-                aria-hidden={!agentOpen || undefined}
-              >
-                <aside
-                  className={styles.paneAgent}
-                  style={{ width: agentWidth }}
+                  {agentResizeSplit(false, true)}
+                  <aside className={styles.paneAgent}>{agent}</aside>
+                </div>
+              ) : (
+                agentResizeSplit(true, false)
+              )
+            ) : (
+              <>
+                {agentResizeSplit(!agentVisible, false)}
+                <div
+                  className={styles.rightClip}
+                  style={{ width: agentClip }}
+                  aria-hidden={!agentVisible || undefined}
                 >
-                  {agent}
-                </aside>
-              </div>
-            </>
+                  <aside
+                    className={styles.paneAgent}
+                    style={{
+                      width: Math.max(agentWidth, AGENT_PANE_WIDTH_MIN),
+                    }}
+                  >
+                    {agent}
+                  </aside>
+                </div>
+              </>
+            )
           ) : null}
         </div>
       )}

@@ -5,6 +5,7 @@
 
 import { createId, createNode } from "@/domain";
 import { useSessionStore } from "@/store/sessionStore";
+import { normalizeInspireTree } from "./inspireNormalize";
 import {
   enforceSingleCallout,
   type InspireEvent,
@@ -70,6 +71,9 @@ export class InspireSessionApplier {
         store.appendContentOnTab(this.tabId, realId, ev.text);
         break;
       }
+      case "reasoning":
+        // 仅 UI 展示，不写入树
+        break;
       case "error":
         throw new Error(ev.message || "Inspire error");
       case "done":
@@ -95,7 +99,8 @@ export class InspireSessionApplier {
         content: enforceSingleCallout(n.content),
         children: walk(n.children),
       }));
-    const tree = walk(tab.project.tree);
+    // 流式结束后规范化：拆 ## 小节、抬升误挂在「总览」下的章节、去标题手写序号
+    const tree = normalizeInspireTree(walk(tab.project.tree));
     useSessionStore.setState((s) => ({
       tabs: s.tabs.map((t) => {
         if (t.id !== this.tabId) return t;

@@ -25,8 +25,18 @@ export type InspireEvent =
   | InspireProjectEvent
   | InspireNodeEvent
   | InspireDeltaEvent
+  | InspireReasoningEvent
   | InspireDoneEvent
   | InspireErrorEvent;
+
+/**
+ * 客户端注入：网关流式 reasoning（深度思考），不由模型 NDJSON 输出。
+ * 仅用于准备期 UI，不写入树。
+ */
+export type InspireReasoningEvent = {
+  type: "reasoning";
+  text: string;
+};
 
 export type InspireProjectEvent = {
   type: "project";
@@ -85,6 +95,11 @@ Rules:
   Prefer emitting a callout as contiguous deltas that complete the whole tag quickly.
 - Code blocks: fenced Markdown \`\`\` … \`\`\`; multiple code blocks per node are allowed.
 - Callouts and code blocks are NOT required.
+- Tree structure (CRITICAL):
+  - One outline section = one node. NEVER put "## 1.1" / "## 2.3" subsection headings in a parent's delta/body; emit them as child "node" events instead.
+  - Parent deltas = short intro only (or empty). Details go in child nodes.
+  - Do NOT nest the whole doc under one "总览/概述/目录/Overview". Major chapters are root siblings (parentId null). Optional 总览 is also a root sibling.
+  - Titles must NOT include outline numbers ("1.", "2.1"); WanGou numbers from tree position.
 - Finish with {"type":"done"} (or {"type":"error","message":"..."} on failure).`;
 
 export function isInspireEvent(value: unknown): value is InspireEvent {

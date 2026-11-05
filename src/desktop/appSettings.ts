@@ -43,6 +43,9 @@ export const AGENT_PANE_WIDTH_MIN = 280;
 export const AGENT_PANE_WIDTH_MAX = 520;
 export const AGENT_PANE_WIDTH_DEFAULT = 360;
 
+/** 中间正文区最小宽度：窄窗时优先压缩侧栏，避免工具栏竖着挤成一条缝 */
+export const MAIN_PANE_WIDTH_MIN = 300;
+
 const LS_KEY = "wango.settings.v1";
 const REL_FILE = "settings/settings.json";
 

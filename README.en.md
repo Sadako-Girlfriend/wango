@@ -5,7 +5,7 @@ English | [简体中文](./README.md)
 A **local-first** tree-structured writing & knowledge-decomposition workstation.  
 Organize with a tree, write details in rich text, export for humans or AI — and optionally use OpenAI-compatible APIs for **Inspiration** generation.
 
-Version **0.3.39** · Windows desktop (Tauri) · [Apache-2.0](./LICENSE)
+Version **0.3.43** · Windows desktop (Tauri) · [Apache-2.0](./LICENSE)
 
 <p align="center">
   <img src="docs/screenshots/02-workspace.png" alt="WanGou workspace: tree + rich text" width="900" />
@@ -179,6 +179,9 @@ Markdown (for AI), PDF, mind map, content images, full `.wango` (optional Agent 
 ### Inspiration (optional)
 
 Refine framework · Generate from one sentence · Outline only. Configure an OpenAI-compatible API in Settings; keys stay on device.
+
+After generation, WanGou normalizes structure: splits `## 1.1`-style subsections stuck in a parent body into child nodes, and lifts chapters wrongly nested under a single Overview root. Leave numbers out of titles — the tree shows them.  
+While waiting for the first node, the prepare overlay can stream model thinking (when available) and lets you cancel.
 
 ![Inspiration](docs/screenshots/06-inspire.png)
 

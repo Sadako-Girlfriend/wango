@@ -158,6 +158,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(true);
+  const [agentVisible, setAgentVisible] = useState(true);
+  const [agentToggleRequest, setAgentToggleRequest] = useState(0);
   const [pendingRecentRemove, setPendingRecentRemove] =
     useState<RecentEntry | null>(null);
   const [settingsSnapshot, setSettingsSnapshot] = useState<AppSettings>(
@@ -168,6 +170,8 @@ export function App() {
   >("idle");
   /** 首个节点出现前：工作区遮罩 */
   const [inspirePreparing, setInspirePreparing] = useState(false);
+  /** 准备期遮罩：深度思考 reasoning 流式文本 */
+  const [inspireThinking, setInspireThinking] = useState("");
   const [inspireTabId, setInspireTabId] = useState<string | null>(null);
   const [inspirePrompt, setInspirePrompt] = useState<
     null | "sentence" | "outline"
@@ -243,6 +247,7 @@ export function App() {
       setInspireTabId(tabId);
       setInspirePhase("generating");
       setInspirePreparing(true);
+      setInspireThinking("");
 
       const applier = new InspireSessionApplier(tabId);
       let sawTerminal = false;
@@ -250,6 +255,10 @@ export function App() {
       try {
         for await (const ev of factory(ac.signal)) {
           if (ac.signal.aborted) break;
+          if (ev.type === "reasoning") {
+            setInspireThinking((prev) => prev + ev.text);
+            continue;
+          }
           if (ev.type === "done" || ev.type === "error") sawTerminal = true;
           applier.apply(ev);
           if (ev.type === "node") {
@@ -277,6 +286,7 @@ export function App() {
 
         const finishUi = () => {
           setInspirePreparing(false);
+          setInspireThinking("");
           setInspireTabId(null);
           setInspirePhase("idle");
           inspireCancelWaitRef.current = null;
@@ -376,6 +386,7 @@ export function App() {
       setInspireTabId(tabId);
       setInspirePhase("generating");
       setInspirePreparing(true);
+      setInspireThinking("");
 
       const applier = new InspireSessionApplier(tabId, {
         skipProjectRename: Boolean(rootTitle.trim()),
@@ -387,6 +398,10 @@ export function App() {
           signal: ac.signal,
         })) {
           if (ac.signal.aborted) break;
+          if (ev.type === "reasoning") {
+            setInspireThinking((prev) => prev + ev.text);
+            continue;
+          }
           if (ev.type === "done" || ev.type === "error") sawTerminal = true;
           applier.apply(ev);
           if (ev.type === "node") {
@@ -413,6 +428,7 @@ export function App() {
         if (inspireAbortRef.current === ac) inspireAbortRef.current = null;
         const finishUi = () => {
           setInspirePreparing(false);
+          setInspireThinking("");
           setInspireTabId(null);
           setInspirePhase("idle");
           inspireCancelWaitRef.current = null;
@@ -1230,6 +1246,8 @@ export function App() {
           const cur = getAppSettings();
           void saveAppSettings({ ...cur, agentPaneOpen: open });
         }}
+        onAgentVisibleChange={setAgentVisible}
+        agentToggleRequest={agentToggleRequest}
         header={
           <Header
             editorMode={editorMode}
@@ -1246,13 +1264,8 @@ export function App() {
             onSave={() => void onSaveActive()}
             onOpenExport={() => setExportOpen(true)}
             onOpenSettings={() => void openSettings()}
-            agentOpen={agentOpen}
-            onToggleAgent={() => {
-              const next = !agentOpen;
-              setAgentOpen(next);
-              const cur = getAppSettings();
-              void saveAppSettings({ ...cur, agentPaneOpen: next });
-            }}
+            agentOpen={agentVisible}
+            onToggleAgent={() => setAgentToggleRequest((n) => n + 1)}
             onInspireGate={onInspireGate}
             onInspireMode={onInspireMode}
             inspirePhase={inspirePhase}
@@ -1650,7 +1663,11 @@ export function App() {
         />
       )}
       {inspirePreparing && inspirePhase === "generating" && (
-        <InspireBusy phase="prepare" />
+        <InspireBusy
+          phase="prepare"
+          thinking={inspireThinking}
+          onCancel={cancelInspire}
+        />
       )}
 
       {/* 首次「引用为词条」防懵提示；偏好只写本机 settings，不进 .wango */}

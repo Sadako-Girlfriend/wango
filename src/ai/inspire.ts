@@ -9,6 +9,7 @@ import {
   type TreeNode,
 } from "@/domain";
 import { chatCompletion } from "./openaiCompat";
+import { normalizeInspireTree } from "./inspireNormalize";
 
 type RawNode = {
   title?: unknown;
@@ -16,6 +17,14 @@ type RawNode = {
   priority?: unknown;
   children?: unknown;
 };
+
+/** 树结构约束：减少「整本挂总览 / 小节写进父正文」 */
+const TREE_STRUCTURE_RULES = `Tree structure (CRITICAL):
+- One outline section = one tree node. NEVER put "## 1.1 …" / "## 2.3 …" subsection headings inside a parent's content; those MUST be child nodes.
+- Parent content = short intro for that node only (or empty). Details belong in children.
+- Do NOT nest the whole document under a single "总览/概述/目录/Overview" root. Put 总览 (if any) as a SIBLING of major chapters; chapters 1..N are root-level siblings (parentId null / top-level tree items).
+- Titles must NOT include outline numbers like "1." or "2.1" — WanGou displays numbers from tree position. Use plain titles (e.g. "产品定位与总体架构", not "1. 产品定位与总体架构").
+- Prefer a balanced multi-level tree; avoid one mega-parent with dozens of mixed sections in its Markdown body.`;
 
 const SYSTEM_JSON = `You are WanGou (万构) assistant. Reply with ONLY a JSON object, no markdown fences.
 Schema:
@@ -28,7 +37,8 @@ Rules:
 - content is Markdown for the node body
 - optional priority: only "high"|"medium"|"low"; use SPARINGLY; omit for most nodes
 - do not invent free-text labels
-- do not include id or attachments fields`;
+- do not include id or attachments fields
+${TREE_STRUCTURE_RULES}`;
 
 function stripFences(text: string): string {
   let s = text.trim();
@@ -75,9 +85,11 @@ export function parseInspireJson(
   if (!treeRaw.length) {
     throw new Error("Model returned empty tree");
   }
-  const tree = treeRaw
-    .filter((n): n is RawNode => Boolean(n) && typeof n === "object")
-    .map((n) => mapNode(n, outlineOnly));
+  const tree = normalizeInspireTree(
+    treeRaw
+      .filter((n): n is RawNode => Boolean(n) && typeof n === "object")
+      .map((n) => mapNode(n, outlineOnly)),
+  );
   if (!tree.length) throw new Error("Model returned invalid tree");
   const name =
     typeof parsed.name === "string" && parsed.name.trim()
@@ -113,7 +125,7 @@ export async function inspireRefine(
   const user = `Improve and flesh out this WanGou project (tree titles + Markdown bodies).
 Keep the overall structure but deepen titles where useful and write richer Markdown content.
 Optional priority (high|medium|low) sparingly; omit for most nodes; no free-text labels.
-Return the full improved project JSON.
+When adding detail, create child nodes instead of stuffing "## 1.1" subsections into a parent body. Keep titles unnumbered.
 
 Input:
 ${JSON.stringify(projectToCompact(project), null, 2)}`;
@@ -136,6 +148,7 @@ export async function inspireFromSentence(
   const user = `Create a complete WanGou project from this one-sentence brief.
 Include a sensible multi-level tree and substantive Markdown content for each node.
 Optional priority (high|medium|low) only on a few key nodes; omit for most; no free-text labels.
+Follow TREE STRUCTURE rules in the system prompt: chapters as root siblings; subsections as child nodes; no numbers in titles; no ## 1.1 inside parent bodies.
 
 Brief: ${q}`;
   const raw = await chatCompletion({
@@ -157,6 +170,7 @@ export async function inspireOutlineOnly(
 - content fields must be empty string "" (or at most a few words)
 - Focus on hierarchy, not prose
 - Optional priority (high|medium|low) sparingly; omit for most nodes; no free-text labels
+- Chapters as root-level siblings; do not wrap everything under one 总览 node; no numbers in titles
 
 Return JSON.`;
   const raw = await chatCompletion({

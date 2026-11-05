@@ -3,22 +3,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 0 16px;
+  gap: 10px;
+  padding: 0 12px;
   background: var(--wg-bg-elevated);
   border-bottom: 1px solid var(--wg-border-subtle);
+  min-width: 0;
 }
 
 .left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
-  flex: 1;
+  flex: 0 1 auto;
 }
 
 .projectName {
-  width: min(200px, 28vw);
+  width: min(160px, 22vw);
   height: 32px;
   border: 1px solid var(--wg-border);
   border-radius: var(--wg-radius-sm);
@@ -37,18 +38,25 @@
 .right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+  /* 勿 overflow:auto —— 会裁掉下拉菜单导致「点不开」 */
+  overflow: visible;
+  flex-wrap: nowrap;
 }
 
 .btn,
 .menuWrap {
   position: relative;
+  flex: 0 0 auto;
 }
 
 .btn,
 .btnPrimary {
   height: 32px;
-  padding: 0 12px;
+  padding: 0 10px;
   border-radius: var(--wg-radius-sm);
   border: 1px solid var(--wg-border);
   background: var(--wg-bg-elevated);
@@ -57,6 +65,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .caret {
@@ -95,7 +105,21 @@
   border-radius: var(--wg-radius-md);
   box-shadow: var(--wg-shadow);
   padding: 6px;
-  z-index: 20;
+  z-index: 40;
+}
+
+.menuSectionLabel {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wg-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.menuDivider {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--wg-border-subtle);
 }
 
 .menuScroll {

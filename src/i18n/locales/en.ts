@@ -40,7 +40,8 @@ const en: Record<MessageKey, string> = {
   "home.dropHint": "Drop to open .wango project",
   "home.dropNoWango": "Please drop a .wango project file",
 
-  "header.newFromTemplate": "New from template",
+  "header.new": "New",
+  "header.newFromTemplate": "From template",
   "header.pasteImport": "New from paste…",
   "header.fileImport": "New from file…",
   "header.settings": "Settings",
@@ -113,7 +114,9 @@ const en: Record<MessageKey, string> = {
   "inspire.generating": "Generating…",
   "inspire.generatingShort": "Generating",
   "inspire.preparing": "Generating…",
-  "inspire.preparingHint": "Connecting to the model and preparing the first node",
+  "inspire.preparingHint":
+    "Connecting to the model and preparing the first node. Deep models may show thinking below — you can cancel anytime.",
+  "inspire.thinkingLive": "Thinking…",
   "inspire.apiMissing":
     "Configure API Base URL and API Key in Settings first.",
   "inspire.needProject":
@@ -358,6 +361,8 @@ const en: Record<MessageKey, string> = {
   "layout.collapseAgent": "Collapse Agent",
   "layout.expandAgent": "Expand Agent",
   "layout.resizeAgentHint": "Drag to resize · double-click to collapse",
+  "layout.agentSqueezedHint":
+    "Window is narrow — Agent was tucked away. Click here or the Agent button to reopen",
   "agent.title": "Agent",
   "agent.newChat": "New chat",
   "agent.newChatHint": "Open a new chat tab; keep the current one",

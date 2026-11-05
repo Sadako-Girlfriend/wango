@@ -1,10 +1,15 @@
 /**
  * 灵感流式 runner：按 inspireProtocol 产出事件。
- * UI / store 应用层稍后接入；此处只负责 prompt + 解析。
+ * 网关 reasoning 以客户端事件 type:"reasoning" 抛出，供准备期遮罩展示。
  */
 
 import type { ProjectData, TreeNode } from "@/domain";
-import { chatCompletion, chatCompletionStream } from "./openaiCompat";
+import {
+  chatCompletion,
+  chatMessagesResult,
+  chatMessagesStreamParts,
+  type ChatStreamPart,
+} from "./openaiCompat";
 import {
   INSPIRE_STREAM_PROTOCOL_PROMPT,
   InspireEventParser,
@@ -28,15 +33,19 @@ function projectToCompact(project: ProjectData): unknown {
   };
 }
 
-async function* eventsFromModelText(
-  chunks: AsyncIterable<string>,
+async function* eventsFromModelParts(
+  parts: AsyncIterable<ChatStreamPart>,
 ): AsyncGenerator<InspireEvent, void, undefined> {
   const parser = new InspireEventParser();
   let raw = "";
   let nodeCount = 0;
-  for await (const chunk of chunks) {
-    raw += chunk;
-    for (const ev of parser.push(chunk)) {
+  for await (const part of parts) {
+    if (part.type === "reasoning") {
+      if (part.text) yield { type: "reasoning", text: part.text };
+      continue;
+    }
+    raw += part.text;
+    for (const ev of parser.push(part.text)) {
       if (ev.type === "node") nodeCount += 1;
       yield ev;
       if (ev.type === "done" || ev.type === "error") return;
@@ -57,35 +66,59 @@ async function* eventsFromModelText(
 }
 
 /** 将完整字符串按小块假流式吐出（网关不支持 stream 时的降级） */
-async function* fakeStreamText(
-  text: string,
+async function* fakeStreamParts(
+  content: string,
+  reasoning?: string,
   chunkSize = 24,
-): AsyncGenerator<string, void, undefined> {
-  for (let i = 0; i < text.length; i += chunkSize) {
-    yield text.slice(i, i + chunkSize);
+): AsyncGenerator<ChatStreamPart, void, undefined> {
+  if (reasoning) {
+    for (let i = 0; i < reasoning.length; i += chunkSize) {
+      yield { type: "reasoning", text: reasoning.slice(i, i + chunkSize) };
+    }
+  }
+  for (let i = 0; i < content.length; i += chunkSize) {
+    yield { type: "content", text: content.slice(i, i + chunkSize) };
   }
 }
 
-async function* streamWithFallback(params: {
+async function* streamPartsWithFallback(params: {
   system: string;
   user: string;
   temperature?: number;
   signal?: AbortSignal;
-}): AsyncGenerator<string, void, undefined> {
+}): AsyncGenerator<ChatStreamPart, void, undefined> {
+  const messages = [
+    { role: "system" as const, content: params.system },
+    { role: "user" as const, content: params.user },
+  ];
   try {
-    yield* chatCompletionStream(params);
+    yield* chatMessagesStreamParts({
+      messages,
+      temperature: params.temperature,
+      signal: params.signal,
+    });
   } catch (err) {
     if (params.signal?.aborted) throw err;
     console.warn(
       "[wango/ai] stream unavailable, falling back to non-stream (遮罩会等到整段返回)",
       err,
     );
-    const full = await chatCompletion({
-      system: params.system,
-      user: params.user,
-      temperature: params.temperature,
-    });
-    yield* fakeStreamText(full);
+    try {
+      const full = await chatMessagesResult({
+        messages,
+        temperature: params.temperature,
+        signal: params.signal,
+      });
+      yield* fakeStreamParts(full.content, full.reasoning);
+    } catch {
+      // 旧网关无 reasoning 字段时再退到纯正文 chatCompletion
+      const full = await chatCompletion({
+        system: params.system,
+        user: params.user,
+        temperature: params.temperature,
+      });
+      yield* fakeStreamParts(full);
+    }
   }
 }
 
@@ -94,10 +127,10 @@ export type InspireStreamOptions = {
 };
 
 async function* runSerialized(
-  chunks: AsyncIterable<string>,
+  parts: AsyncIterable<ChatStreamPart>,
   options?: InspireStreamOptions,
 ): AsyncGenerator<InspireEvent, void, undefined> {
-  const serialized = serializeInspirePlayback(eventsFromModelText(chunks), {
+  const serialized = serializeInspirePlayback(eventsFromModelParts(parts), {
     signal: options?.signal,
   });
   yield* typewriterPace(serialized, { signal: options?.signal });
@@ -113,12 +146,13 @@ Emit NDJSON per protocol. For EACH node: emit "node", then all its "delta" lines
 Keep overall structure but deepen titles where useful.
 You may set optional node "priority" (high|medium|low) SPARINGLY; omit for most nodes. Do not invent free-text labels.
 Prefer name suffix in the project event (e.g. original + " · AI").
+When adding detail, emit child nodes — do not put "## 1.1" subsections into a parent body; titles stay unnumbered.
 
 Input:
 ${JSON.stringify(projectToCompact(project), null, 2)}`;
 
   yield* runSerialized(
-    streamWithFallback({
+    streamPartsWithFallback({
       system: INSPIRE_STREAM_PROTOCOL_PROMPT,
       user,
       temperature: 0.6,
@@ -142,11 +176,12 @@ export async function* inspireFromSentenceStream(
 Emit NDJSON per protocol. Depth-first: for EACH node emit "node" then stream its Markdown via "delta", THEN emit the next node (finish parent body before any child node).
 Do NOT list all nodes before writing bodies.
 Optional "priority" (high|medium|low) only on a few truly important or lesser nodes; omit for most. Do not invent free-text labels.
+Follow protocol Tree structure rules: chapters as root siblings (parentId null); subsections as child nodes; no "## 1.1" inside parent bodies; no numbers in titles.
 
 Brief: ${q}`;
 
   yield* runSerialized(
-    streamWithFallback({
+    streamPartsWithFallback({
       system: INSPIRE_STREAM_PROTOCOL_PROMPT,
       user,
       temperature: 0.75,
@@ -171,10 +206,11 @@ export async function* inspireOutlineOnlyStream(
 - Do NOT emit delta (empty bodies)
 - Focus on hierarchy, not prose
 - Optional "priority" (high|medium|low) only where it clearly helps; omit for most nodes; no free-text labels
+- Chapters as root siblings; do not wrap everything under one 总览; titles without outline numbers
 - End with done`;
 
   yield* runSerialized(
-    streamWithFallback({
+    streamPartsWithFallback({
       system: INSPIRE_STREAM_PROTOCOL_PROMPT,
       user,
       temperature: 0.5,
@@ -207,7 +243,7 @@ Paste:
 ${clipped}`;
 
   yield* runSerialized(
-    streamWithFallback({
+    streamPartsWithFallback({
       system: INSPIRE_STREAM_PROTOCOL_PROMPT,
       user,
       temperature: 0.55,

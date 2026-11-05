@@ -1,6 +1,5 @@
 /**
- * 顶部栏：项目名、灵感、设置；打开/保存/导出收进「文件」二级菜单。
- * 窗口/任务栏图标走 Tauri icons；首页大图在 HomeView。
+ * 顶部栏：项目名、灵感、Agent、设置；新建 / 文件收进二级菜单，避免窄窗挤爆。
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -71,13 +70,13 @@ export function Header({
 }: HeaderProps) {
   const { t } = useI18n();
   const templates = listTemplates();
-  const [tplOpen, setTplOpen] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
   const [fileOpen, setFileOpen] = useState(false);
   const [inspireHover, setInspireHover] = useState(false);
   const inspireBusy = inspirePhase !== "idle";
   const [projOpen, setProjOpen] = useState(false);
   const [inspireOpen, setInspireOpen] = useState(false);
-  const tplRef = useRef<HTMLDivElement>(null);
+  const newRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLDivElement>(null);
   const projRef = useRef<HTMLDivElement>(null);
   const inspireRef = useRef<HTMLDivElement>(null);
@@ -89,7 +88,7 @@ export function Header({
   });
 
   const closeAll = () => {
-    setTplOpen(false);
+    setNewOpen(false);
     setFileOpen(false);
     setProjOpen(false);
     setInspireOpen(false);
@@ -98,7 +97,7 @@ export function Header({
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       const tnode = e.target as Node;
-      if (tplRef.current && !tplRef.current.contains(tnode)) setTplOpen(false);
+      if (newRef.current && !newRef.current.contains(tnode)) setNewOpen(false);
       if (fileRef.current && !fileRef.current.contains(tnode)) {
         setFileOpen(false);
       }
@@ -181,7 +180,7 @@ export function Header({
                   return;
                 }
                 setInspireOpen((v) => !v);
-                setTplOpen(false);
+                setNewOpen(false);
                 setFileOpen(false);
                 setProjOpen(false);
               })();
@@ -207,7 +206,6 @@ export function Header({
                 />
               </svg>
             </span>
-            {/* 叠字占位：按最长文案定宽，切换不抖 */}
             <span className={styles.inspireLabelStack} aria-hidden>
               {(
                 [
@@ -295,6 +293,7 @@ export function Header({
             </div>
           )}
         </div>
+
         {editorMode && onToggleAgent ? (
           <button
             type="button"
@@ -302,38 +301,18 @@ export function Header({
             data-active={agentOpen || undefined}
             aria-pressed={agentOpen}
             onClick={onToggleAgent}
-            title={agentOpen ? t("layout.collapseAgent") : t("layout.expandAgent")}
+            title={
+              agentOpen ? t("layout.collapseAgent") : t("layout.expandAgent")
+            }
           >
             {t("agent.toggle")}
           </button>
         ) : null}
+
         <button type="button" className={styles.btn} onClick={onOpenSettings}>
           {t("header.settings")}
         </button>
-        {onFileImport && (
-          <button
-            type="button"
-            className={styles.btn}
-            onClick={() => {
-              closeAll();
-              onFileImport();
-            }}
-          >
-            {t("header.fileImport")}
-          </button>
-        )}
-        {onPasteImport && (
-          <button
-            type="button"
-            className={styles.btn}
-            onClick={() => {
-              closeAll();
-              onPasteImport();
-            }}
-          >
-            {t("header.pasteImport")}
-          </button>
-        )}
+
         {editorMode && (
           <>
             <div className={styles.menuWrap} ref={projRef}>
@@ -345,7 +324,7 @@ export function Header({
                 onClick={() => {
                   setProjOpen((v) => !v);
                   setInspireOpen(false);
-                  setTplOpen(false);
+                  setNewOpen(false);
                   setFileOpen(false);
                 }}
               >
@@ -405,21 +384,30 @@ export function Header({
                 </div>
               )}
             </div>
-            <div className={styles.menuWrap} ref={tplRef}>
+
+            <div className={styles.menuWrap} ref={newRef}>
               <button
                 type="button"
                 className={styles.btnPrimary}
+                aria-expanded={newOpen}
+                aria-haspopup="menu"
                 onClick={() => {
-                  setTplOpen((v) => !v);
+                  setNewOpen((v) => !v);
                   setInspireOpen(false);
                   setFileOpen(false);
                   setProjOpen(false);
                 }}
               >
-                {t("header.newFromTemplate")}
+                {t("header.new")}
+                <span className={styles.caret} aria-hidden>
+                  ▾
+                </span>
               </button>
-              {tplOpen && (
+              {newOpen && (
                 <div className={styles.menu} role="menu">
+                  <div className={styles.menuSectionLabel} role="presentation">
+                    {t("header.newFromTemplate")}
+                  </div>
                   {templates.map((tpl) => {
                     const key = templateNameKey(tpl.id);
                     return (
@@ -436,39 +424,9 @@ export function Header({
                       </button>
                     );
                   })}
-                </div>
-              )}
-            </div>
-            <div className={styles.menuWrap} ref={fileRef}>
-              <button
-                type="button"
-                className={styles.btn}
-                aria-expanded={fileOpen}
-                aria-haspopup="menu"
-                onClick={() => {
-                  setFileOpen((v) => !v);
-                  setTplOpen(false);
-                  setProjOpen(false);
-                  setInspireOpen(false);
-                }}
-              >
-                {t("header.file")}
-                <span className={styles.caret} aria-hidden>
-                  ▾
-                </span>
-              </button>
-              {fileOpen && (
-                <div className={styles.menu} role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      onImport();
-                      closeAll();
-                    }}
-                  >
-                    {t("header.open")}
-                  </button>
+                  {(onFileImport || onPasteImport) && (
+                    <div className={styles.menuDivider} role="separator" />
+                  )}
                   {onFileImport && (
                     <button
                       type="button"
@@ -493,6 +451,40 @@ export function Header({
                       {t("header.pasteImport")}
                     </button>
                   )}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.menuWrap} ref={fileRef}>
+              <button
+                type="button"
+                className={styles.btn}
+                aria-expanded={fileOpen}
+                aria-haspopup="menu"
+                onClick={() => {
+                  setFileOpen((v) => !v);
+                  setNewOpen(false);
+                  setProjOpen(false);
+                  setInspireOpen(false);
+                }}
+              >
+                {t("header.file")}
+                <span className={styles.caret} aria-hidden>
+                  ▾
+                </span>
+              </button>
+              {fileOpen && (
+                <div className={styles.menu} role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onImport();
+                      closeAll();
+                    }}
+                  >
+                    {t("header.open")}
+                  </button>
                   <button
                     type="button"
                     role="menuitem"

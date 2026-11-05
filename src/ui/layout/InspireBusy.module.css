@@ -10,11 +10,11 @@
 .preparePanel {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  min-width: 240px;
-  max-width: 360px;
-  padding: 22px 28px;
+  align-items: stretch;
+  gap: 10px;
+  width: min(480px, calc(100vw - 48px));
+  max-width: 480px;
+  padding: 22px 24px;
   border-radius: var(--wg-radius-md);
   background: var(--wg-bg-elevated);
   border: 1px solid var(--wg-border);
@@ -30,41 +30,71 @@
 }
 
 .prepareHint {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 12px;
   color: var(--wg-text-muted, #64748b);
   line-height: 1.45;
 }
 
-.dock {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 110;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: var(--wg-radius-md);
-  background: var(--wg-bg-elevated);
-  border: 1px solid var(--wg-border);
-  box-shadow: var(--wg-shadow);
-  font-size: 13px;
-  color: var(--wg-text);
+.thinking {
+  margin: 4px 0 0;
+  border: none;
+  border-radius: 8px;
+  background: var(--wg-bg-muted);
+  text-align: left;
 }
 
-.label {
-  white-space: nowrap;
+.thinkingSummary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--wg-text-secondary);
+}
+
+.thinkingSummary::-webkit-details-marker {
+  display: none;
+}
+
+.thinkingCaret {
+  display: inline-block;
+  transition: transform 0.12s ease;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.thinking[open] .thinkingCaret {
+  transform: rotate(90deg);
+}
+
+.thinkingBody {
+  margin: 0;
+  padding: 0 10px 10px;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--wg-text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
 }
 
 .cancel {
   appearance: none;
+  align-self: center;
+  margin-top: 4px;
   border: 1px solid var(--wg-border);
   background: var(--wg-bg);
   color: var(--wg-text);
   border-radius: var(--wg-radius-sm, 6px);
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 6px 16px;
+  font-size: 13px;
   cursor: pointer;
 }
 

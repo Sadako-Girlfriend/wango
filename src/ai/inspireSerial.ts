@@ -9,6 +9,7 @@ import type {
   InspireEvent,
   InspireNodeEvent,
   InspireProjectEvent,
+  InspireReasoningEvent,
 } from "./inspireProtocol";
 
 type NodeRec = {
@@ -55,6 +56,7 @@ export async function* serializeInspirePlayback(
   const deltaQ = new Map<string, string[]>();
 
   let pendingProject: InspireProjectEvent | null = null;
+  const reasoningQ: string[] = [];
   let sourceEnded = false;
   let errorEv: InspireErrorEvent | null = null;
 
@@ -77,6 +79,9 @@ export async function* serializeInspirePlayback(
     switch (ev.type) {
       case "project":
         pendingProject = ev;
+        break;
+      case "reasoning":
+        if (ev.text) reasoningQ.push(ev.text);
         break;
       case "node": {
         if (known.has(ev.id)) break;
@@ -151,6 +156,14 @@ export async function* serializeInspirePlayback(
 
   try {
     while (!signal?.aborted) {
+      // 思考过程优先抛出，准备期 UI 可立刻滚动
+      if (reasoningQ.length) {
+        const text = reasoningQ.shift()!;
+        const r: InspireReasoningEvent = { type: "reasoning", text };
+        yield r;
+        continue;
+      }
+
       if (pendingProject) {
         const p = pendingProject;
         pendingProject = null;
@@ -185,6 +198,11 @@ export async function* serializeInspirePlayback(
       let hadDelta = false;
       let closed = false;
       while (!closed && !signal?.aborted) {
+        if (reasoningQ.length) {
+          const text = reasoningQ.shift()!;
+          yield { type: "reasoning", text } satisfies InspireReasoningEvent;
+          continue;
+        }
         const q = deltaQ.get(n.id);
         if (q?.length) {
           hadDelta = true;

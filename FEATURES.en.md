@@ -1,6 +1,6 @@
 # WanGou — Feature reference
 
-> Version: **0.3.39**  
+> Version: **0.3.41**  
 > Form factor: Windows desktop app (portable `wango.exe`, no NSIS installer)  
 > 中文：[功能说明.md](./功能说明.md)
 
@@ -172,4 +172,4 @@ Unsigned builds may trigger Defender — choose **Run anyway**.
 
 ---
 
-*Aligned with 0.3.39; when in doubt, trust the running UI.*
+*Aligned with 0.3.41; when in doubt, trust the running UI.*
