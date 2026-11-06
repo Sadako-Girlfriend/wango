@@ -16,8 +16,10 @@
  * 4. 以 `done` 或 `error` 结束；其后事件忽略
  *
  * content 约束（写入 prompt，解析层做软校验）：
- * - Markdown；允许 HTML（备注块）
+ * - Markdown；允许 HTML（备注块、公式）
  * - 备注块可选，每节点最多 1 个：`<aside data-type="callout">…</aside>`
+ * - 公式：块级 `<div data-type="math-block" data-latex="...">...</div>`；
+ *   行内 `<span data-type="math-inline" data-latex="...">...</span>`（也可用 $ / $$，落盘时会转 HTML）
  * - 代码块用 fenced ``` ，可多段
  */
 
@@ -89,12 +91,17 @@ Rules:
 - "id" is a short stable token for this stream only (e.g. "n1"). "parentId" is null for roots.
 - Optional "priority" on node: only "high" | "medium" | "low". Use SPARINGLY for truly important/lesser nodes; OMIT for most nodes. Do NOT invent free-text labels.
 - Body text is streamed via "delta" appending to that node's Markdown content.
-- Content is Markdown. HTML is allowed for callouts.
+- Content is Markdown. HTML is allowed for callouts and math formulas.
 - Callout (optional, at most ONE per node): a single HTML block
   <aside data-type="callout">...</aside>
   Prefer emitting a callout as contiguous deltas that complete the whole tag quickly.
+- Math formulas (use when the topic needs equations):
+  Block: <div data-type="math-block" data-latex="LaTeX here">LaTeX here</div>
+  Inline: <span data-type="math-inline" data-latex="LaTeX here">LaTeX here</span>
+  Prefer these HTML tags. Plain $...$ / $$...$$ is also OK (client converts).
+  Put LaTeX in data-latex (e.g. a^2+b^2=c^2, \\\\frac{1}{2}). Do NOT invent other math HTML.
 - Code blocks: fenced Markdown \`\`\` … \`\`\`; multiple code blocks per node are allowed.
-- Callouts and code blocks are NOT required.
+- Callouts, math, and code blocks are NOT required — only when useful.
 - Tree structure (CRITICAL):
   - One outline section = one node. NEVER put "## 1.1" / "## 2.3" subsection headings in a parent's delta/body; emit them as child "node" events instead.
   - Parent deltas = short intro only (or empty). Details go in child nodes.
@@ -271,6 +278,28 @@ export function safePartialMarkdown(md: string): {
     }
   }
 
+  // 未闭合公式块 / 行内：补闭合标签，避免半截 HTML 把后续正文吃掉
+  {
+    const blockOpen = visible.lastIndexOf('<div data-type="math-block"');
+    if (blockOpen >= 0) {
+      const after = visible.slice(blockOpen);
+      if (!/<\/div>/i.test(after)) {
+        visible = /<div\b[^>]*>/i.test(after)
+          ? `${visible}</div>`
+          : visible;
+      }
+    }
+    const inlineOpen = visible.lastIndexOf('<span data-type="math-inline"');
+    if (inlineOpen >= 0) {
+      const after = visible.slice(inlineOpen);
+      if (!/<\/span>/i.test(after)) {
+        visible = /<span\b[^>]*>/i.test(after)
+          ? `${visible}</span>`
+          : visible;
+      }
+    }
+  }
+
   // 未闭合代码围栏：补闭合 ```，深色块内可持续打字
   {
     const fenceCount = (visible.match(/^```/gm) ?? []).length;
@@ -299,11 +328,19 @@ export function safePartialMarkdown(md: string): {
   return { visible, held };
 }
 
-/** 把已闭合的代码围栏 / 备注换成等长空格，索引仍对齐原文 */
+/** 把已闭合的代码围栏 / 备注 / 公式换成等长空格，索引仍对齐原文 */
 function maskProtectedRegions(s: string): string {
   return s
     .replace(/```[\s\S]*?```/g, (m) => " ".repeat(m.length))
-    .replace(/<aside\b[\s\S]*?<\/aside>/gi, (m) => " ".repeat(m.length));
+    .replace(/<aside\b[\s\S]*?<\/aside>/gi, (m) => " ".repeat(m.length))
+    .replace(
+      /<div\b[^>]*\bdata-type\s*=\s*["']math-block["'][^>]*>[\s\S]*?<\/div>/gi,
+      (m) => " ".repeat(m.length),
+    )
+    .replace(
+      /<span\b[^>]*\bdata-type\s*=\s*["']math-inline["'][^>]*>[\s\S]*?<\/span>/gi,
+      (m) => " ".repeat(m.length),
+    );
 }
 
 /** 尚未换行的块级前缀：列表、标题、引用 */

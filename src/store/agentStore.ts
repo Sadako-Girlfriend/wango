@@ -43,6 +43,8 @@ type AgentState = {
   selectChat: (chatId: string) => Promise<void>;
   closeChat: (chatId: string) => Promise<void>;
   appendUser: (content: string) => AgentMessage;
+  /** 删掉该条及之后所有消息（用于改写已发送内容再发） */
+  truncateFromMessage: (messageId: string) => Promise<void>;
   beginAssistant: () => string;
   appendAssistantDelta: (id: string, delta: string) => void;
   appendAssistantThinking: (id: string, delta: string) => void;
@@ -207,6 +209,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set({ session, error: null });
     void persist(get().activeKey, session);
     return msg;
+  },
+
+  truncateFromMessage: async (messageId) => {
+    const chat = activeChatOf(get().session);
+    const idx = chat.messages.findIndex((m) => m.id === messageId);
+    if (idx < 0) return;
+    const messages = chat.messages.slice(0, idx);
+    const session = withActiveChat(get().session, { messages });
+    set({ session, error: null, sending: false });
+    await persist(get().activeKey, session);
   },
 
   beginAssistant: () => {

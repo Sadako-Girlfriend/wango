@@ -63,6 +63,7 @@ export function ContentStatsPanel({
     },
     { key: "code", label: t("stats.codeBlocks"), value: stats.codeBlocks },
     { key: "callout", label: t("stats.callouts"), value: stats.callouts },
+    { key: "math", label: t("stats.mathBlocks"), value: stats.mathBlocks },
   ];
 
   return createPortal(

@@ -1,0 +1,2 @@
+# 源数据可重新下载，不进仓库；成品见 src/editor/formulaLibrary/catalog.json
+*.js

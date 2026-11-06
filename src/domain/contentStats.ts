@@ -17,6 +17,8 @@ export interface ContentStats {
   codeBlocks: number;
   /** 备注框（callout）数量 */
   callouts: number;
+  /** 公式块数量 */
+  mathBlocks: number;
 }
 
 export type StatsScope =
@@ -30,6 +32,7 @@ export const EMPTY_STATS: ContentStats = {
   punctuation: 0,
   codeBlocks: 0,
   callouts: 0,
+  mathBlocks: 0,
 };
 
 export function sumContentStats(list: ContentStats[]): ContentStats {
@@ -39,6 +42,7 @@ export function sumContentStats(list: ContentStats[]): ContentStats {
       punctuation: acc.punctuation + s.punctuation,
       codeBlocks: acc.codeBlocks + s.codeBlocks,
       callouts: acc.callouts + s.callouts,
+      mathBlocks: acc.mathBlocks + s.mathBlocks,
     }),
     { ...EMPTY_STATS },
   );
@@ -49,20 +53,22 @@ export function analyzeMarkdown(md: string): ContentStats {
   if (!md) return { ...EMPTY_STATS };
 
   const callouts = countCallouts(md);
+  const mathBlocks = countMathBlocks(md);
   const { count: codeBlocks, rest } = stripFencedCode(md);
   // 备注框：去掉外壳标签，保留内部文字参与字数
   const withoutCalloutTags = stripCalloutShells(rest);
-  const plain = markdownToPlain(withoutCalloutTags);
+  const withoutMath = stripMathBlocks(withoutCalloutTags);
+  const plain = markdownToPlain(withoutMath);
   const chars = countNonWhitespace(plain);
   const punctuation = countPunctuation(plain);
 
-  return { chars, punctuation, codeBlocks, callouts };
+  return { chars, punctuation, codeBlocks, callouts, mathBlocks };
 }
 
 /** 划词：纯文本为主；若来自代码块/备注框则结构计数至少为 1 */
 export function analyzeSelection(
   text: string,
-  block?: "text" | "code" | "callout" | null,
+  block?: "text" | "code" | "callout" | "math" | null,
 ): ContentStats {
   const base = analyzeMarkdown(text);
   if (block === "code" && base.codeBlocks === 0) {
@@ -70,6 +76,9 @@ export function analyzeSelection(
   }
   if (block === "callout" && base.callouts === 0) {
     return { ...base, callouts: 1 };
+  }
+  if (block === "math" && base.mathBlocks === 0) {
+    return { ...base, mathBlocks: 1 };
   }
   return base;
 }
@@ -126,11 +135,32 @@ function countCallouts(md: string): number {
   return (md.match(re) ?? []).length;
 }
 
+function countMathBlocks(md: string): number {
+  const block =
+    /<div\b[^>]*\bdata-type\s*=\s*["']math-block["'][^>]*>/gi;
+  const inline =
+    /<span\b[^>]*\bdata-type\s*=\s*["']math-inline["'][^>]*>/gi;
+  return (md.match(block) ?? []).length + (md.match(inline) ?? []).length;
+}
+
 /** 去掉 callout 开合标签，保留内部 */
 function stripCalloutShells(md: string): string {
   return md
     .replace(/<aside\b[^>]*\bdata-type\s*=\s*["']callout["'][^>]*>/gi, "\n")
     .replace(/<\/aside>/gi, "\n");
+}
+
+/** 公式块/行内公式去掉（LaTeX 不计入普通字数） */
+function stripMathBlocks(md: string): string {
+  return md
+    .replace(
+      /<div\b[^>]*\bdata-type\s*=\s*["']math-block["'][^>]*>[\s\S]*?<\/div>/gi,
+      "\n",
+    )
+    .replace(
+      /<span\b[^>]*\bdata-type\s*=\s*["']math-inline["'][^>]*>[\s\S]*?<\/span>/gi,
+      "",
+    );
 }
 
 function stripFencedCode(md: string): { count: number; rest: string } {

@@ -444,6 +444,10 @@ export function TwoPane({
                 <div
                   className={styles.agentOverlay}
                   style={{ width: overlayWidth }}
+                  onWheel={(e) => {
+                    // 叠在正文上时拦住滚轮，避免滚到后面的编辑器
+                    e.stopPropagation();
+                  }}
                 >
                   {agentResizeSplit(false, true)}
                   <aside className={styles.paneAgent}>{agent}</aside>

@@ -3,9 +3,9 @@
 English | [简体中文](./README.md)
 
 A **local-first** tree-structured writing & knowledge-decomposition workstation.  
-Organize with a tree, write details in rich text, export for humans or AI — and optionally use OpenAI-compatible APIs for **Inspiration** generation.
+Organize with a tree, write details in rich text, export for humans or AI — and optionally use OpenAI-compatible APIs for **Agent edits** and **Inspiration**.
 
-Version **0.3.43** · Windows desktop (Tauri) · [Apache-2.0](./LICENSE)
+Version **0.4.8** · Windows desktop (Tauri) · [Apache-2.0](./LICENSE)
 
 <p align="center">
   <img src="docs/screenshots/02-workspace.png" alt="WanGou workspace: tree + rich text" width="900" />
@@ -136,7 +136,7 @@ Left: infinite tree (numbering, drag-and-drop, priority / labels). Right: rich t
 
 ### Rich text
 
-Headings, colors & highlight, lists, links, images, code blocks (language / line numbers / copy), callouts.
+Headings, colors & highlight, lists, links, images, code blocks (language / line numbers / copy), callouts, **inline / block math** (MathLive).
 
 ![Rich text & code block](docs/screenshots/03-editor-rich.png)
 
@@ -162,7 +162,13 @@ Bottom-left glossary: reference / copy outline terms, auto-scan and manual binds
 
 ### Agent (optional)
 
-Full-project chat; edit proposals require confirm; chat tabs; Apply all above the composer.
+Full-project chat; **edits write only after you confirm**. Cursor-like flow:
+
+1. Model proposes changes → sidebar card **and the body** show red deletes / green adds (read-only preview)  
+2. **Apply** writes the final text and clears the marks; or Skip / Apply all / Skip all  
+3. Right-click a user message → **Edit & resend** (drops that message and everything after)  
+
+Optional **web search** (DeepSeek Search, off by default; toggle in Settings or the Agent header; same API key). Chat tabs; chats can travel with a `.wango` save-as.
 
 ![Agent](docs/screenshots/16-agent.png)
 
@@ -205,9 +211,9 @@ Language, model endpoint, export folder, **shortcuts**, content stats (F10).
 | New | From template · **from paste** · **from file** (`.docx` / `.md`) |
 | Tree | CRUD, promote / demote, drag-drop, search, priority, labels, release / dissolve |
 | Glossary | Reference / copy terms · link scan · blacklist · rename notes |
-| Editor | TipTap · code blocks · callouts · images · line height · attachments |
+| Editor | TipTap · math · code blocks · callouts · images · line height · attachments |
 | Export | Markdown · Word · mind-map PNG · long PDF / images · `.wango` copy |
-| AI | **Agent** proposals · inspiration modes · paste AI organize · keys local-only |
+| AI | **Agent** red/green preview then apply · optional web search · inspiration · wand · keys local-only |
 | Power | Configurable shortcuts · content stats (F10) · open page tabs |
 | i18n | Chinese / English |
 

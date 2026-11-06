@@ -2,7 +2,13 @@
  * 右侧 Agent：全量项目上下文对话；改稿提案需确认后应用。
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { buildAgentSystemPrompt, runAgentReply } from "@/ai/agentChat";
 import {
   emptyProposalStatus,
@@ -13,16 +19,90 @@ import {
   orderProposalsForApply,
   remapProposalIds,
 } from "@/ai/proposalApplyOrder";
+import {
+  proposalDiffOps,
+  resolveProposalNewText,
+} from "@/ai/proposalDiff";
+import { maybeAgentWebSearch } from "@/ai/deepseekTools";
 import { ensureApiSettings, isApiConfigured } from "@/ai/openaiCompat";
+import {
+  getAppSettings,
+  loadAppSettings,
+  saveAppSettings,
+} from "@/desktop/appSettings";
 import {
   findGlossaryById,
   findNodeById,
   resolveGlossaryTitle,
   type ProjectData,
 } from "@/domain";
+import type { DiffOp } from "@/editor/contentDiff";
 import { useI18n } from "@/i18n/useI18n";
 import { useAgentStore } from "@/store/agentStore";
 import styles from "./AgentPane.module.css";
+
+const PREVIEW_CHAR_BUDGET = 900;
+
+function truncatePreviewText(text: string, budget: number): {
+  text: string;
+  used: number;
+  truncated: boolean;
+} {
+  if (text.length <= budget) {
+    return { text, used: text.length, truncated: false };
+  }
+  return {
+    text: `${text.slice(0, Math.max(0, budget - 1))}…`,
+    used: budget,
+    truncated: true,
+  };
+}
+
+/** 待确认：红绿对照；已应用/跳过：纯终稿（红绿消失） */
+function ProposalPreviewBody({
+  ops,
+  plain,
+  pending,
+}: {
+  ops: DiffOp[];
+  plain: string;
+  pending: boolean;
+}) {
+  if (!pending) {
+    const { text } = truncatePreviewText(plain, PREVIEW_CHAR_BUDGET);
+    return <>{text}</>;
+  }
+  let left = PREVIEW_CHAR_BUDGET;
+  const parts: ReactNode[] = [];
+  for (let i = 0; i < ops.length; i++) {
+    if (left <= 0) {
+      parts.push(
+        <div key={`more-${i}`} className={styles.diffMore}>
+          …
+        </div>,
+      );
+      break;
+    }
+    const op = ops[i]!;
+    const slice = truncatePreviewText(op.text, left);
+    left -= slice.used;
+    const cls =
+      op.type === "add"
+        ? styles.diffAdd
+        : op.type === "del"
+          ? styles.diffDel
+          : styles.diffEq;
+    parts.push(
+      <div key={i} className={cls} data-diff={op.type}>
+        {slice.text}
+      </div>,
+    );
+    if (slice.truncated) {
+      break;
+    }
+  }
+  return <>{parts}</>;
+}
 
 interface AgentPaneProps {
   project: ProjectData;
@@ -47,18 +127,58 @@ export function AgentPane({
     session.chats[0];
   const messages = activeChat?.messages ?? [];
   const [draft, setDraft] = useState("");
+  const [webSearchOn, setWebSearchOn] = useState(
+    () => getAppSettings().webSearchEnabled === true,
+  );
+  const [searchStatus, setSearchStatus] = useState<string | null>(null);
+  const [msgMenu, setMsgMenu] = useState<{
+    x: number;
+    y: number;
+    messageId: string;
+    content: string;
+  } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    void loadAppSettings().then((s) => {
+      setWebSearchOn(s.webSearchEnabled === true);
+    });
+  }, []);
 
   const focusLabel = useMemo(() => {
     if (!focus) return t("agent.contextNone");
     return t("agent.contextNode", { title: focus.title });
   }, [focus, t]);
 
+  // 仅在发送中跟到底；结束后不抢用户上滚去点「应用」
   useEffect(() => {
+    if (!sending) return;
     const el = listRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
+  }, [messages, sending, session.activeChatId]);
+
+  // 旧消息：正文里嵌套 ``` 曾导致提案解析失败；打开对话时补救一次
+  useEffect(() => {
+    if (sending) return;
+    for (const m of messages) {
+      if (m.role !== "assistant") continue;
+      if (m.proposals?.length) continue;
+      if (
+        !m.content.includes("wango-proposals") &&
+        !/```json\b/i.test(m.content)
+      ) {
+        continue;
+      }
+      const { display, proposals } = extractProposalsFromReply(m.content);
+      if (!proposals.length) continue;
+      void useAgentStore.getState().finishAssistant(m.id, {
+        content: display,
+        proposals,
+      });
+    }
   }, [messages, sending, session.activeChatId]);
 
   useEffect(() => {
@@ -100,17 +220,13 @@ export function AgentPane({
     return p.field === "title" ? t("agent.fieldTitle") : t("agent.fieldContent");
   };
 
-  const proposalPreview = (p: AgentProposal): string => {
-    if (p.op === "addChild") {
-      const body = (p.content ?? "").trim();
-      const head = p.title.trim() || t("editor.nodeUntitled");
-      return body ? `${head}\n\n${body}` : head;
-    }
-    return p.next;
-  };
-
   const applyOne = (p: AgentProposal): string | false => {
-    return onApplyProposal(p);
+    try {
+      return onApplyProposal(p);
+    } catch (err) {
+      console.error("apply proposal failed", err);
+      return false;
+    }
   };
 
   const activeMessages = () => {
@@ -185,6 +301,21 @@ export function AgentPane({
     }
   };
 
+  const editSentMessage = async (messageId: string, content: string) => {
+    if (sending) stop();
+    setMsgMenu(null);
+    await useAgentStore.getState().truncateFromMessage(messageId);
+    setDraft(content);
+    setSearchStatus(null);
+    requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      const len = content.length;
+      el.setSelectionRange(len, len);
+    });
+  };
+
   const send = async () => {
     const text = draft.trim();
     if (!text || sending) return;
@@ -209,7 +340,25 @@ export function AgentPane({
     const ac = new AbortController();
     abortRef.current = ac;
     try {
-      const system = buildAgentSystemPrompt({ project, focus });
+      let system = buildAgentSystemPrompt({ project, focus });
+      setSearchStatus(null);
+      if (webSearchOn || getAppSettings().webSearchEnabled) {
+        setSearchStatus(t("agent.webSearchRunning"));
+        const searched = await maybeAgentWebSearch({
+          userText: text,
+          signal: ac.signal,
+        });
+        if (searched == null) {
+          setSearchStatus(t("agent.webSearchFailed"));
+        } else if (searched.hitCount > 0 && searched.context) {
+          system = `${system}\n\n${searched.context}`;
+          setSearchStatus(
+            t("agent.webSearchHits", { n: String(searched.hitCount) }),
+          );
+        } else {
+          setSearchStatus(t("agent.webSearchHits", { n: "0" }));
+        }
+      }
       for await (const part of runAgentReply({
         system,
         history,
@@ -254,7 +403,14 @@ export function AgentPane({
   };
 
   return (
-    <div className={styles.root} data-wg-focus="agent">
+    <div
+      className={styles.root}
+      data-wg-focus="agent"
+      onWheel={(e) => {
+        // 侧栏/浮层都拦住冒泡，滚轮只滚 Agent 列表
+        e.stopPropagation();
+      }}
+    >
       <div className={styles.top}>
         <div className={styles.header}>
           <div className={styles.title}>{t("agent.title")}</div>
@@ -326,6 +482,32 @@ export function AgentPane({
           {focusLabel}
           <span className={styles.hintSep}>·</span>
           {t("agent.contextFull")}
+          <span className={styles.hintSep}>·</span>
+          <label
+            className={styles.searchToggle}
+            title={t("agent.webSearchToggle")}
+          >
+            <input
+              type="checkbox"
+              checked={webSearchOn}
+              disabled={sending}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setWebSearchOn(on);
+                const cur = getAppSettings();
+                void saveAppSettings({ ...cur, webSearchEnabled: on });
+              }}
+            />
+            <span>
+              {webSearchOn ? t("agent.webSearchOn") : t("agent.webSearchOff")}
+            </span>
+          </label>
+          {searchStatus ? (
+            <>
+              <span className={styles.hintSep}>·</span>
+              <span>{searchStatus}</span>
+            </>
+          ) : null}
         </div>
       </div>
       <div className={styles.list} ref={listRef}>
@@ -335,7 +517,24 @@ export function AgentPane({
           messages.map((m) => {
             const status = m.proposalStatus ?? emptyProposalStatus(m.proposals ?? []);
             return (
-              <div key={m.id} className={styles.bubble} data-role={m.role}>
+              <div
+                key={m.id}
+                className={styles.bubble}
+                data-role={m.role}
+                onContextMenu={
+                  m.role === "user" && m.content.trim()
+                    ? (e) => {
+                        e.preventDefault();
+                        setMsgMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          messageId: m.id,
+                          content: m.content,
+                        });
+                      }
+                    : undefined
+                }
+              >
                 <div className={styles.role}>
                   {m.role === "user" ? t("agent.you") : t("agent.bot")}
                 </div>
@@ -392,14 +591,20 @@ export function AgentPane({
                           {p.note ? (
                             <div className={styles.proposalNote}>{p.note}</div>
                           ) : null}
-                          <pre className={styles.proposalPreview}>
-                            {(() => {
-                              const text = proposalPreview(p);
-                              return text.length > 600
-                                ? `${text.slice(0, 600)}…`
-                                : text;
-                            })()}
-                          </pre>
+                          <div
+                            className={styles.proposalPreview}
+                            data-diff={st === "pending" ? "live" : "done"}
+                          >
+                            <ProposalPreviewBody
+                              pending={st === "pending"}
+                              plain={resolveProposalNewText(p)}
+                              ops={
+                                st === "pending"
+                                  ? proposalDiffOps(project, p)
+                                  : []
+                              }
+                            />
+                          </div>
                           {st === "pending" ? (
                             <div className={styles.proposalActions}>
                               <button
@@ -480,6 +685,7 @@ export function AgentPane({
       <div className={styles.composer}>
         <div className={styles.composerShell}>
           <textarea
+            ref={inputRef}
             className={styles.input}
             value={draft}
             rows={3}
@@ -512,6 +718,32 @@ export function AgentPane({
           </div>
         </div>
       </div>
+      {msgMenu ? (
+        <>
+          <button
+            type="button"
+            className={styles.menuBackdrop}
+            aria-label="close"
+            onClick={() => setMsgMenu(null)}
+          />
+          <div
+            className={styles.msgMenu}
+            style={{ left: msgMenu.x, top: msgMenu.y }}
+            role="menu"
+          >
+            <button
+              type="button"
+              className={styles.msgMenuItem}
+              role="menuitem"
+              onClick={() => {
+                void editSentMessage(msgMenu.messageId, msgMenu.content);
+              }}
+            >
+              {t("agent.editResend")}
+            </button>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

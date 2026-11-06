@@ -31,6 +31,11 @@ export interface AppSettings {
   agentPaneOpen: boolean;
   /** 右侧 Agent 宽度像素 */
   agentPaneWidth: number;
+  /**
+   * Agent 联网搜索（DeepSeek Search/Fetch）。
+   * 默认关；开启后用同一 API Key 调 /v1/tools/search。
+   */
+  webSearchEnabled: boolean;
   /** 快捷键覆盖（缺省用默认表） */
   hotkeys: HotkeyMap;
 }
@@ -65,6 +70,7 @@ export function emptyAppSettings(): AppSettings {
     treePaneCollapsed: false,
     agentPaneOpen: true,
     agentPaneWidth: AGENT_PANE_WIDTH_DEFAULT,
+    webSearchEnabled: false,
     hotkeys: mergeHotkeys(null),
   };
 }
@@ -127,6 +133,7 @@ function normalize(raw: unknown): AppSettings {
         ? ((o as { agentPaneWidth: number }).agentPaneWidth)
         : AGENT_PANE_WIDTH_DEFAULT,
     ),
+    webSearchEnabled: (o as { webSearchEnabled?: unknown }).webSearchEnabled === true,
     hotkeys: normalizeHotkeys(
       (o as { hotkeys?: unknown }).hotkeys,
     ),
@@ -224,6 +231,7 @@ export async function saveAppSettings(
         ? next.agentPaneWidth
         : getAppSettings().agentPaneWidth,
     ),
+    webSearchEnabled: next.webSearchEnabled === true,
     hotkeys: normalizeHotkeys(
       (next as AppSettings).hotkeys ?? getAppSettings().hotkeys,
     ),

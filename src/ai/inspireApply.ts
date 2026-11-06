@@ -6,6 +6,7 @@
 import { createId, createNode } from "@/domain";
 import { useSessionStore } from "@/store/sessionStore";
 import { normalizeInspireTree } from "./inspireNormalize";
+import { normalizeMathInMarkdown } from "./mathMarkdown";
 import {
   enforceSingleCallout,
   type InspireEvent,
@@ -96,7 +97,7 @@ export class InspireSessionApplier {
     ): typeof tab.project.tree =>
       nodes.map((n) => ({
         ...n,
-        content: enforceSingleCallout(n.content),
+        content: normalizeMathInMarkdown(enforceSingleCallout(n.content)),
         children: walk(n.children),
       }));
     // 流式结束后规范化：拆 ## 小节、抬升误挂在「总览」下的章节、去标题手写序号

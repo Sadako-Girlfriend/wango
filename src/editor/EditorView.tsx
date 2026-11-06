@@ -22,6 +22,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
+import Strike from "@tiptap/extension-strike";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
@@ -40,11 +41,26 @@ import { ColorMenu } from "./ColorMenu";
 import { FONT_OPTIONS, FONT_SIZES } from "./colorPalettes";
 import { FancyCodeBlock } from "./FancyCodeBlock";
 import { FontSize } from "./FontSize";
+import { FormulaPalette } from "./FormulaPalette";
 import {
   LINE_HEIGHT_PRESETS,
   LineHeight,
   normalizeLineHeight,
 } from "./LineHeight";
+import { insertIntoActiveMath, setActiveMathField } from "./mathFocus";
+import {
+  focusLastMathField,
+  insertMathAtCursor,
+  isMathNodeActive,
+} from "./insertMath";
+import {
+  annotateContentDiff,
+  markdownHasDiffAnnotations,
+  stripDiffAnnotations,
+} from "./contentDiff";
+import { DiffAdd, DiffDel } from "./DiffBlocks";
+import { MathBlock, MathInline } from "./MathBlock";
+import { ensureMathLive, type MathfieldElement } from "./mathliveLoader";
 import { ResizableImage } from "./ResizableImage";
 import { TrailingNode } from "./TrailingNode";
 import { GlossaryDecorations } from "./glossaryDecorations";
@@ -57,6 +73,7 @@ import {
   IconBulletList,
   IconCallout,
   IconCode,
+  IconFormula,
   IconImage,
   IconItalic,
   IconLink,
@@ -93,6 +110,8 @@ export interface EditorHandle {
   captureWandTarget: () => WandCapture;
   /** 将魔法棒结果写回捕获目标 */
   applyWandResult: (target: WandCapture, text: string) => void;
+  /** 接受 AI 红绿改动标记 */
+  acceptDiffChanges: () => void;
   /** 当前选区（无选中或空串则 null） */
   getGlossarySelection: () => GlossaryEditorSelection | null;
 }
@@ -103,6 +122,8 @@ interface EditorViewProps {
   onChange: (markdown: string) => void;
   /** 灵感流式外推：同节点 markdown 增长时打字机刷新 */
   contentStreaming?: boolean;
+  /** Agent 应用前红绿预览：只读，不写回 store */
+  contentLocked?: boolean;
   /** 当前节点上的词条链接（渲染层） */
   glossaryLinks?: GlossaryLink[];
   /** 词条自定义引用色（entryId → #rrggbb） */
@@ -565,6 +586,7 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
       markdown,
       onChange,
       contentStreaming,
+      contentLocked = false,
       glossaryLinks = [],
       glossaryColors,
       glossaryTitles,
@@ -582,6 +604,7 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
     ref,
   ) {
     const { t: tr, locale } = useI18n();
+    const [formulaPaletteOpen, setFormulaPaletteOpen] = useState(false);
     const [colorMenu, setColorMenu] = useState<"text" | "highlight" | null>(
       null,
     );
@@ -614,6 +637,9 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
     markdownRef.current = markdown;
     const streamingRef = useRef(Boolean(contentStreaming));
     streamingRef.current = Boolean(contentStreaming);
+    const lockedRef = useRef(Boolean(contentLocked));
+    lockedRef.current = Boolean(contentLocked);
+    const readOnly = Boolean(contentStreaming) || Boolean(contentLocked);
 
     const editor = useEditor({
       extensions: [
@@ -621,6 +647,34 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
           heading: { levels: [1, 2] },
           // 改用带语言/复制/行号的深色代码块
           codeBlock: false,
+          // 自管 Strike：避免裸 <del> 抢走 DiffDel（含旧稿 data-wg-diff）
+          strike: false,
+        }),
+        Strike.extend({
+          parseHTML() {
+            return [
+              { tag: "s" },
+              { tag: "strike" },
+              {
+                tag: "del",
+                getAttrs: (node) => {
+                  if (typeof node === "string") return false;
+                  const el = node as HTMLElement;
+                  if (el.getAttribute("data-wg-diff")) return false;
+                  if (el.getAttribute("data-type") === "diff-del") return false;
+                  return {};
+                },
+              },
+              {
+                style: "text-decoration",
+                consuming: false,
+                getAttrs: (style) =>
+                  typeof style === "string" && style.includes("line-through")
+                    ? {}
+                    : false,
+              },
+            ];
+          },
         }),
         // 段落行距：挂 paragraph attrs（须在 StarterKit paragraph 之后）
         LineHeight,
@@ -632,6 +686,10 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
         FontSize,
         Highlight.configure({ multicolor: true }),
         Callout,
+        MathBlock,
+        MathInline,
+        DiffAdd,
+        DiffDel,
         TrailingNode,
         Placeholder.configure({ placeholder: t("editor.placeholder") }),
         ResizableImage.configure({ allowBase64: true }),
@@ -670,7 +728,9 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
         },
       },
       onUpdate: ({ editor: ed }) => {
-        if (applyingRef.current || streamingRef.current) return;
+        if (applyingRef.current || streamingRef.current || lockedRef.current) {
+          return;
+        }
         const storage = ed.storage as {
           markdown?: { getMarkdown: () => string };
         };
@@ -679,7 +739,7 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
         emittedMarkdownRef.current = stored;
         onChange(stored);
       },
-      editable: !contentStreaming,
+      editable: !readOnly,
     });
 
     useImperativeHandle(ref, () => ({
@@ -798,7 +858,11 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
           void (async () => {
             applyingRef.current = true;
             try {
-              const display = await rewriteMarkdownForDisplay(result);
+              const annotated = annotateContentDiff(
+                markdownRef.current,
+                result,
+              );
+              const display = await rewriteMarkdownForDisplay(annotated);
               if (editor.isDestroyed) return;
               // emitUpdate=false：避免与 applyingRef 打架；随后手动同步 store
               editor.chain().focus().setContent(display || "", false).run();
@@ -844,6 +908,31 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
         } catch (err) {
           console.error("wand insert selection failed", err);
         } finally {
+          applyingRef.current = false;
+        }
+      },
+
+      acceptDiffChanges: () => {
+        if (!editor) return;
+        const raw =
+          (
+            editor.storage as {
+              markdown?: { getMarkdown: () => string };
+            }
+          ).markdown?.getMarkdown() ?? editor.getText();
+        if (!markdownHasDiffAnnotations(raw)) return;
+        const cleaned = stripDiffAnnotations(sanitizeMarkdownContent(raw));
+        const stored = rewriteMarkdownForStorage(cleaned);
+        applyingRef.current = true;
+        try {
+          void rewriteMarkdownForDisplay(stored).then((display) => {
+            if (editor.isDestroyed) return;
+            editor.commands.setContent(display || "", false);
+            emittedMarkdownRef.current = stored;
+            onChange(stored);
+            applyingRef.current = false;
+          });
+        } catch {
           applyingRef.current = false;
         }
       },
@@ -908,8 +997,8 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
     }, [markdown, editor, contentStreaming]);
 
     useEffect(() => {
-      editor?.setEditable(!contentStreaming);
-    }, [editor, contentStreaming]);
+      editor?.setEditable(!contentStreaming && !contentLocked);
+    }, [editor, contentStreaming, contentLocked]);
 
     /**
      * 流式同步：store 为缓冲，编辑器按 rAF 抽最新可见正文。
@@ -1350,6 +1439,31 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
           >
             <IconCallout />
           </button>
+          <button
+            type="button"
+            className={styles.toolBtn}
+            title={tr("editor.math")}
+            aria-label={tr("editor.math")}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              void ensureMathLive().then(() => {
+                if (isMathNodeActive(editor)) {
+                  setFormulaPaletteOpen((o) => !o);
+                  return;
+                }
+                insertMathAtCursor(editor);
+                setFormulaPaletteOpen(true);
+                requestAnimationFrame(() => {
+                  focusLastMathField();
+                });
+              });
+            }}
+            data-active={
+              isMathNodeActive(editor) || formulaPaletteOpen || undefined
+            }
+          >
+            <IconFormula />
+          </button>
 
           <span className={styles.sep} />
 
@@ -1363,6 +1477,41 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
           >
             <IconUndo />
           </button>
+          {!contentLocked && markdownHasDiffAnnotations(markdown) ? (
+            <button
+              type="button"
+              className={styles.toolBtn}
+              title={tr("editor.acceptDiff")}
+              aria-label={tr("editor.acceptDiff")}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                const raw =
+                  (
+                    editor.storage as {
+                      markdown?: { getMarkdown: () => string };
+                    }
+                  ).markdown?.getMarkdown() ?? editor.getText();
+                if (!markdownHasDiffAnnotations(raw)) return;
+                const cleaned = stripDiffAnnotations(
+                  sanitizeMarkdownContent(raw),
+                );
+                const stored = rewriteMarkdownForStorage(cleaned);
+                applyingRef.current = true;
+                void rewriteMarkdownForDisplay(stored)
+                  .then((display) => {
+                    if (editor.isDestroyed) return;
+                    editor.commands.setContent(display || "", false);
+                    emittedMarkdownRef.current = stored;
+                    onChange(stored);
+                  })
+                  .finally(() => {
+                    applyingRef.current = false;
+                  });
+              }}
+            >
+              {tr("editor.acceptDiffShort")}
+            </button>
+          ) : null}
         </div>
         <div
           className={styles.content}
@@ -1544,6 +1693,23 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
               document.body,
             )
           : null}
+
+        <FormulaPalette
+          open={formulaPaletteOpen}
+          onClose={() => setFormulaPaletteOpen(false)}
+          onInsertFallback={(latex) => {
+            void ensureMathLive().then(() => {
+              insertMathAtCursor(editor);
+              setFormulaPaletteOpen(true);
+              requestAnimationFrame(() => {
+                const last = focusLastMathField() as MathfieldElement | null;
+                if (!last) return;
+                setActiveMathField(last);
+                insertIntoActiveMath(latex);
+              });
+            });
+          }}
+        />
       </div>
     );
   },

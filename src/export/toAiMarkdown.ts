@@ -5,6 +5,7 @@
 
 import type { NodePriority, TreeNode } from "@/domain";
 import { withNumbering, type NumberedTreeNode } from "@/domain";
+import { stripDiffAnnotations } from "@/editor/contentDiff";
 import { sanitizeMarkdownContent } from "@/editor/sanitizeMarkdown";
 
 export function toAiMarkdown(tree: TreeNode[]): string {
@@ -20,7 +21,9 @@ function walk(node: NumberedTreeNode, depth: number, chunks: string[]) {
   const level = Math.min(Math.max(depth, 1), 6);
   const hashes = "#".repeat(level);
   chunks.push(`${hashes} ${node.number} ${formatHeadingMeta(node)}`);
-  const body = sanitizeMarkdownContent(node.content).trim();
+  const body = stripDiffAnnotations(
+    sanitizeMarkdownContent(node.content),
+  ).trim();
   if (body) {
     chunks.push(body);
   }

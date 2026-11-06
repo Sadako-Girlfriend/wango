@@ -10,6 +10,7 @@ import {
 } from "@/domain";
 import { chatCompletion } from "./openaiCompat";
 import { normalizeInspireTree } from "./inspireNormalize";
+import { normalizeMathInMarkdown } from "./mathMarkdown";
 
 type RawNode = {
   title?: unknown;
@@ -34,7 +35,11 @@ Schema:
 }
 Rules:
 - tree must be a non-empty array
-- content is Markdown for the node body
+- content is Markdown for the node body; HTML allowed for callouts and math:
+  Callout: <aside data-type="callout">...</aside> (at most one per node)
+  Block math: <div data-type="math-block" data-latex="LaTeX">LaTeX</div>
+  Inline math: <span data-type="math-inline" data-latex="LaTeX">LaTeX</span>
+  $...$ / $$...$$ also OK for math
 - optional priority: only "high"|"medium"|"low"; use SPARINGLY; omit for most nodes
 - do not invent free-text labels
 - do not include id or attachments fields
@@ -57,6 +62,8 @@ function mapNode(raw: RawNode, outlineOnly: boolean): TreeNode {
     typeof raw.content === "string" ? raw.content : "";
   if (outlineOnly) {
     content = content.trim().slice(0, 80);
+  } else if (content) {
+    content = normalizeMathInMarkdown(content);
   }
   const priority = normalizePriority(raw.priority);
   const kids = Array.isArray(raw.children) ? raw.children : [];

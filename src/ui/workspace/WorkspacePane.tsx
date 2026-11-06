@@ -50,6 +50,8 @@ interface WorkspacePaneProps {
   onContentChange: (markdown: string) => void;
   /** 灵感生成中：正文只读 + 外推打字机 */
   contentStreaming?: boolean;
+  /** Agent 应用前：正文红绿预览（覆盖显示，不写 store） */
+  diffPreviewMarkdown?: string | null;
   glossaryLinks?: import("@/domain").GlossaryLink[];
   glossaryColors?: Record<string, string>;
   glossaryTitles?: Record<string, string>;
@@ -100,6 +102,7 @@ export function WorkspacePane({
   onTitleChange,
   onContentChange,
   contentStreaming = false,
+  diffPreviewMarkdown = null,
   glossaryLinks = [],
   glossaryColors,
   glossaryTitles,
@@ -544,9 +547,10 @@ export function WorkspacePane({
         <EditorView
           ref={editorRef}
           nodeId={node.id}
-          markdown={node.content}
+          markdown={diffPreviewMarkdown ?? node.content}
           onChange={onContentChange}
           contentStreaming={contentStreaming}
+          contentLocked={Boolean(diffPreviewMarkdown)}
           glossaryLinks={glossaryLinks}
           glossaryColors={glossaryColors}
           glossaryTitles={glossaryTitles}

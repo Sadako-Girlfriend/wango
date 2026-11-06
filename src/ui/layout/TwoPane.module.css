@@ -76,6 +76,7 @@
   align-items: stretch;
   min-width: 0;
   pointer-events: auto;
+  overscroll-behavior: contain;
   filter: drop-shadow(0 8px 24px rgb(0 0 0 / 0.18));
 }
 

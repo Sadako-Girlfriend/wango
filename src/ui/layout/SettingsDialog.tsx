@@ -22,6 +22,7 @@ export interface SettingsDraft {
   model: string;
   hideExportWatermark: boolean;
   defaultExportDir: string;
+  webSearchEnabled: boolean;
   hotkeys: HotkeyMap;
 }
 
@@ -45,6 +46,9 @@ export function SettingsDialog({
   const [apiBaseUrl, setApiBaseUrl] = useState(initial.apiBaseUrl);
   const [apiKey, setApiKey] = useState(initial.apiKey);
   const [model, setModel] = useState(initial.model);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(
+    initial.webSearchEnabled === true,
+  );
   const [hideExportWatermark, setHideExportWatermark] = useState(
     initial.hideExportWatermark,
   );
@@ -101,6 +105,7 @@ export function SettingsDialog({
         model,
         hideExportWatermark,
         defaultExportDir,
+        webSearchEnabled,
         hotkeys,
       });
     } finally {
@@ -256,6 +261,21 @@ export function SettingsDialog({
                     autoComplete="off"
                     spellCheck={false}
                   />
+                </label>
+                <label className={styles.checkRow}>
+                  <input
+                    type="checkbox"
+                    checked={webSearchEnabled}
+                    onChange={(e) => setWebSearchEnabled(e.target.checked)}
+                  />
+                  <span>
+                    <span className={styles.checkLabel}>
+                      {t("settings.webSearch")}
+                    </span>
+                    <span className={styles.checkHint}>
+                      {t("settings.webSearchHint")}
+                    </span>
+                  </span>
                 </label>
               </section>
             )}

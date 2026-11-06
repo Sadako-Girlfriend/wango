@@ -1,0 +1,207 @@
+/* 导出：只留公式，去掉编辑态外壳 */
+:global([data-wg-export]) .remove,
+:global([data-wg-export]) .removeInline,
+.wrap:global([data-wg-export]) .remove,
+.wrap:global([data-wg-export]) .removeInline,
+.wrapInline:global([data-wg-export]) .remove,
+.wrapInline:global([data-wg-export]) .removeInline {
+  display: none !important;
+}
+
+:global([data-wg-export]) .label,
+:global([data-wg-export]) .placeholder,
+:global([data-wg-export]) .placeholderInline,
+.wrap:global([data-wg-export]) .label,
+.wrap:global([data-wg-export]) .placeholder,
+.wrap:global([data-wg-export]) .placeholderInline,
+.wrapInline:global([data-wg-export]) .label,
+.wrapInline:global([data-wg-export]) .placeholder,
+.wrapInline:global([data-wg-export]) .placeholderInline {
+  display: none !important;
+}
+
+:global([data-wg-export]) .wrap,
+:global([data-wg-export]) .wrapInline,
+.wrap:global([data-wg-export]),
+.wrapInline:global([data-wg-export]) {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+}
+
+/* MathLive 自带键盘/菜单按钮：我们有符号面板 + 右键，行内更碍事 */
+.host :global(math-field)::part(menu-toggle),
+.host :global(math-field)::part(virtual-keyboard-toggle),
+.hostInline :global(math-field)::part(menu-toggle),
+.hostInline :global(math-field)::part(virtual-keyboard-toggle) {
+  display: none !important;
+}
+
+.wrap {
+  position: relative;
+  margin: 12px 0;
+  padding: 14px 36px 14px 14px;
+  border-radius: var(--wg-radius-md);
+  background: var(--wg-bg);
+  border: 1px solid var(--wg-border-subtle);
+  box-sizing: border-box;
+  min-height: 52px;
+}
+
+.wrap[data-selected] {
+  border-color: color-mix(in srgb, var(--wg-accent) 55%, var(--wg-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--wg-accent) 25%, transparent);
+}
+
+/* 行内：空态也要够宽，避免绝对定位提示折成细高塔 */
+.wrapInline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0.15em 0.2em;
+  padding: 6px 26px 6px 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--wg-bg) 80%, transparent);
+  border: 1px solid var(--wg-border-subtle);
+  box-sizing: border-box;
+  min-width: 14em;
+  min-height: 2.4em;
+  line-height: 1.5;
+  max-width: 100%;
+}
+
+.wrapInline[data-selected] {
+  border-color: color-mix(in srgb, var(--wg-accent) 55%, var(--wg-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--wg-accent) 25%, transparent);
+}
+
+.label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wg-text-secondary);
+  user-select: none;
+}
+
+.host {
+  min-height: 1.8em;
+  font-size: 1.15em;
+  line-height: 1.5;
+}
+
+.hostInline {
+  min-height: 1.6em;
+  font-size: 1.12em;
+  line-height: 1.5;
+  display: inline-block;
+  vertical-align: middle;
+  min-width: 10em;
+}
+
+.host :global(math-field),
+.hostInline :global(math-field) {
+  display: block;
+  width: 100%;
+  min-height: 1.6em;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: inherit;
+  color: var(--wg-text);
+}
+
+.hostInline :global(math-field) {
+  display: inline-block;
+  width: auto;
+  min-width: 10em;
+  min-height: 1.6em;
+  padding: 2px 6px;
+  vertical-align: middle;
+}
+
+.host :global(math-field:focus),
+.hostInline :global(math-field:focus) {
+  outline: none;
+}
+
+.placeholder {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--wg-text-tertiary, var(--wg-text-secondary));
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.placeholderInline {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--wg-text-tertiary, var(--wg-text-secondary));
+  font-size: 13px;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.placeholder[data-hidden],
+.placeholderInline[data-hidden] {
+  display: none;
+}
+
+.remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: 6px;
+  background: var(--wg-bg-elevated);
+  color: var(--wg-text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.removeInline {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--wg-text-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.65;
+}
+
+.remove:hover,
+.removeInline:hover {
+  background: var(--wg-accent-soft);
+  border-color: color-mix(in srgb, var(--wg-accent) 40%, var(--wg-border));
+  color: var(--wg-accent);
+  opacity: 1;
+}

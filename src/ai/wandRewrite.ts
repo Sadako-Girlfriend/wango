@@ -4,6 +4,7 @@
  */
 
 import type { NumberedTreeNode } from "@/domain";
+import { normalizeMathInMarkdown } from "./mathMarkdown";
 import { chatCompletion } from "./openaiCompat";
 
 export type WandBlockKind = "text" | "code" | "callout";
@@ -55,7 +56,11 @@ ${params.treeOutline.trim() || "（空树）"}`;
 Rewrite the body of ONE outline node according to the user's idea.
 You receive the full project title outline for orientation — do NOT rewrite other nodes.
 Return ONLY the new Markdown body for the current node. No title line, no JSON, no code fences wrapping the whole reply.
-Keep useful structure (headings, lists, callouts, code blocks) when appropriate.
+Keep useful structure (headings, lists, callouts, code blocks, math) when appropriate.
+Math formulas: use
+  <div data-type="math-block" data-latex="LaTeX">LaTeX</div>
+  or <span data-type="math-inline" data-latex="LaTeX">LaTeX</span>
+  (or $...$ / $$...$$).
 Language: match the user's idea / existing content (usually Chinese).`;
     const user = `${outlineBlock}
 
@@ -68,7 +73,9 @@ Current node body Markdown:
 ${params.current.trim() || "（空）"}
 
 Rewrite ONLY this node's body. Output Markdown only.`;
-    return stripOuterFence(await chatCompletion({ system, user, temperature: 0.7 }));
+    return normalizeMathInMarkdown(
+      stripOuterFence(await chatCompletion({ system, user, temperature: 0.7 })),
+    );
   }
 
   const block = params.block ?? "text";
@@ -120,7 +127,9 @@ Selected note content to replace:
 ${params.current.trim() || "（空）"}
 
 Output the replacement Markdown only.`;
-    return stripOuterFence(await chatCompletion({ system, user, temperature: 0.7 }));
+    return normalizeMathInMarkdown(
+      stripOuterFence(await chatCompletion({ system, user, temperature: 0.7 })),
+    );
   }
 
   const system = `You are WanGou writing assistant.
@@ -139,7 +148,9 @@ Selected fragment to replace:
 ${params.current.trim() || "（空）"}
 
 Output the replacement Markdown only.`;
-  return stripOuterFence(await chatCompletion({ system, user, temperature: 0.7 }));
+  return normalizeMathInMarkdown(
+    stripOuterFence(await chatCompletion({ system, user, temperature: 0.7 })),
+  );
 }
 
 function formatNodeBodyContext(

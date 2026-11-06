@@ -112,4 +112,46 @@ describe("extractProposalsFromReply", () => {
     expect(sets[0]?.op === "set" && sets[0].next).toBe("新");
     expect(adds).toHaveLength(2);
   });
+
+  it("正文里嵌套 ``` 不会截断提案 JSON", () => {
+    const next = "板书：\n```\n猜想区\n结论\n```\n完";
+    const raw = [
+      "下面是提案：",
+      "```wango-proposals",
+      JSON.stringify({
+        proposals: [
+          {
+            id: "p1",
+            op: "set",
+            target: "tree",
+            nodeId: "n1",
+            field: "content",
+            next,
+          },
+          {
+            id: "p2",
+            op: "addChild",
+            target: "tree",
+            parentId: "n1",
+            title: "子课",
+            content: "有 <span data-type=\"math-inline\" data-latex=\"I=U/R\">I=U/R</span>",
+          },
+        ],
+      }),
+      "```",
+      "应用后请确认器材。",
+    ].join("\n");
+    const { display, proposals } = extractProposalsFromReply(raw);
+    expect(proposals).toHaveLength(2);
+    expect(proposals[0]?.op).toBe("set");
+    if (proposals[0]?.op === "set") {
+      expect(proposals[0].next).toContain("<pre>");
+      expect(proposals[0].next).toContain("猜想区");
+      expect(proposals[0].next).not.toMatch(/^```/m);
+    }
+    expect(proposals[1]).toMatchObject({ op: "addChild", title: "子课" });
+    expect(display).toContain("下面是提案");
+    expect(display).toContain("应用后请确认器材");
+    expect(display).not.toContain("wango-proposals");
+  });
 });

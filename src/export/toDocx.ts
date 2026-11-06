@@ -98,10 +98,23 @@ function isCalloutEl(el: Element): boolean {
   );
 }
 
+function isMathBlockEl(el: Element): boolean {
+  return Boolean(
+    el.matches(
+      ".react-renderer.node-mathBlock, .react-renderer.node-mathInline, div[data-type='math-block'], span[data-type='math-inline'], div.wg-math-block, span.wg-math-inline",
+    ) ||
+      (el instanceof HTMLElement && el.dataset.wgMath === "1") ||
+      el.querySelector(
+        ":scope > [data-wg-math], :scope > [data-type='math-block'], :scope > [data-type='math-inline']",
+      ),
+  );
+}
+
 function isImageBlockEl(el: Element): boolean {
   return Boolean(
     el.matches(".react-renderer.node-image") ||
-      (el.tagName === "IMG" && !el.closest("[data-wg-codeblock],[data-wg-callout]")),
+      (el.tagName === "IMG" &&
+        !el.closest("[data-wg-codeblock],[data-wg-callout],[data-wg-math]")),
   );
 }
 
@@ -114,6 +127,14 @@ function captureTarget(el: HTMLElement): HTMLElement {
     ? el
     : el.querySelector<HTMLElement>("[data-wg-callout], aside[data-type='callout']");
   if (callout) return callout;
+  const math = el.matches(
+    "[data-wg-math], div[data-type='math-block'], span[data-type='math-inline']",
+  )
+    ? el
+    : el.querySelector<HTMLElement>(
+        "[data-wg-math], div[data-type='math-block'], span[data-type='math-inline']",
+      );
+  if (math) return math;
   return el;
 }
 
@@ -147,33 +168,46 @@ async function elementToImageParagraph(
   el: HTMLElement,
   label: string,
   backgroundColor: string | null,
+  options?: { stripMathChrome?: boolean },
 ): Promise<Paragraph> {
   const target = captureTarget(el);
-  const dataUrl = await captureElementPng(target, { backgroundColor });
-  const bytes = dataUrlToUint8Array(dataUrl);
-  const natural = pngSize(bytes);
-  // html-to-image 默认 pixelRatio≈2，显示尺寸按 CSS 缩小
-  const cssW = Math.max(target.scrollWidth, target.offsetWidth, 1);
-  const cssH = Math.max(
-    1,
-    Math.round((natural.height / Math.max(natural.width, 1)) * cssW),
-  );
-  const size = fitWidth(cssW, cssH);
-  return new Paragraph({
-    spacing: { before: 120, after: 120 },
-    children: [
-      new ImageRun({
-        type: "png",
-        data: bytes,
-        transformation: size,
-        altText: {
-          title: label,
-          description: label,
-          name: label,
-        },
-      }),
-    ],
-  });
+  // Word 截的是编辑区 DOM：临时挂 data-wg-export，复用公式「去边框」样式
+  const stripChrome = Boolean(options?.stripMathChrome);
+  const hadExportAttr = target.hasAttribute("data-wg-export");
+  if (stripChrome && !hadExportAttr) {
+    target.setAttribute("data-wg-export", "1");
+  }
+  try {
+    const dataUrl = await captureElementPng(target, { backgroundColor });
+    const bytes = dataUrlToUint8Array(dataUrl);
+    const natural = pngSize(bytes);
+    // html-to-image 默认 pixelRatio≈2，显示尺寸按 CSS 缩小
+    const cssW = Math.max(target.scrollWidth, target.offsetWidth, 1);
+    const cssH = Math.max(
+      1,
+      Math.round((natural.height / Math.max(natural.width, 1)) * cssW),
+    );
+    const size = fitWidth(cssW, cssH);
+    return new Paragraph({
+      spacing: { before: 120, after: 120 },
+      children: [
+        new ImageRun({
+          type: "png",
+          data: bytes,
+          transformation: size,
+          altText: {
+            title: label,
+            description: label,
+            name: label,
+          },
+        }),
+      ],
+    });
+  } finally {
+    if (stripChrome && !hadExportAttr) {
+      target.removeAttribute("data-wg-export");
+    }
+  }
 }
 
 async function imgElToParagraph(img: HTMLImageElement): Promise<Paragraph | null> {
@@ -415,6 +449,13 @@ async function blockToChildren(el: HTMLElement): Promise<FileChild[]> {
   }
   if (isCalloutEl(el)) {
     return [await elementToImageParagraph(el, "callout", null)];
+  }
+  if (isMathBlockEl(el)) {
+    return [
+      await elementToImageParagraph(el, "math", null, {
+        stripMathChrome: true,
+      }),
+    ];
   }
   if (isImageBlockEl(el)) {
     const img =

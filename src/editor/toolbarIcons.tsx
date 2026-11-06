@@ -103,6 +103,16 @@ export function IconCallout() {
   );
 }
 
+/** 公式块 */
+export function IconFormula() {
+  return (
+    <svg {...stroke}>
+      <path d="M5 7h4l3 10h2l3-10h2" />
+      <path d="M9 12h6" />
+    </svg>
+  );
+}
+
 /** Word 式字体颜色：A + 底色条 */
 export function IconTextColor({ color = "#e11d48" }: { color?: string }) {
   return (

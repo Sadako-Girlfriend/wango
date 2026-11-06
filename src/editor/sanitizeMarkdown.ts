@@ -117,10 +117,35 @@ function collapseEmptyParagraphs(root: HTMLElement) {
 /**
  * 清理已写入 Markdown 字符串中的脏 HTML / 硬换行噪声。
  * 可安全用于 onChange、导出。
+ * 公式节点（math-block / math-inline）必须保留，勿当样式壳剥掉。
  */
 export function sanitizeMarkdownContent(md: string): string {
   if (!md) return md;
-  let out = md;
+
+  const slots: string[] = [];
+  const slot = (m: string) => {
+    const i = slots.length;
+    slots.push(m);
+    return `\uE000SM${i}\uE001`;
+  };
+  let out = md
+    .replace(
+      /<div\b[^>]*\bdata-type\s*=\s*["']math-block["'][^>]*>[\s\S]*?<\/div>/gi,
+      (m) => slot(m),
+    )
+    .replace(
+      /<span\b[^>]*\bdata-type\s*=\s*["']math-inline["'][^>]*>[\s\S]*?<\/span>/gi,
+      (m) => slot(m),
+    )
+    // 保留 AI 改动红绿壳，勿当普通标签剥掉
+    .replace(
+      /<(ins|del)\b[^>]*\bdata-wg-diff\s*=\s*["'](?:add|del)["'][^>]*>[\s\S]*?<\/\1>/gi,
+      (m) => slot(m),
+    )
+    .replace(
+      /<div\b[^>]*\bdata-wg-diff\s*=\s*["'](?:add|del)["'][^>]*>[\s\S]*?<\/div>/gi,
+      (m) => slot(m),
+    );
 
   // 反复剥 span/font 外壳（含嵌套与带属性）
   for (let i = 0; i < 8; i++) {
@@ -137,7 +162,7 @@ export function sanitizeMarkdownContent(md: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ");
 
-  // 去掉「仅样式」残留的空标签对
+  // 去掉「仅样式」残留的空标签对（公式已保护，不会误删）
   out = out.replace(/<(div|p|section|article)(?:\s[^>]*)?>\s*<\/\1>/gi, "\n\n");
 
   // Markdown 硬换行：行尾 `\` 或两空格；粘贴常带孤立 `\`
@@ -156,6 +181,8 @@ export function sanitizeMarkdownContent(md: string): string {
 
   // 3+ 空行压成 2，统一段落间距
   out = out.replace(/\n{3,}/g, "\n\n");
+
+  out = out.replace(/\uE000SM(\d+)\uE001/g, (_, i) => slots[Number(i)] ?? "");
 
   return out.trimEnd();
 }

@@ -125,6 +125,15 @@ describe("safePartialMarkdown", () => {
     expect(visible.endsWith("</aside>")).toBe(true);
   });
 
+  it("streams unclosed math-block with synthetic close", () => {
+    const { visible, held } = safePartialMarkdown(
+      '式 <div data-type="math-block" data-latex="x">x',
+    );
+    expect(held).toBe("");
+    expect(visible.includes('data-type="math-block"')).toBe(true);
+    expect(visible.endsWith("</div>")).toBe(true);
+  });
+
   it("does not hold bold markers inside streaming code fence", () => {
     const { visible, held } = safePartialMarkdown(
       "上文\n```js\nconst a = b ** c",

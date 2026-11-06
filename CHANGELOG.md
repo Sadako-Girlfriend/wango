@@ -4,6 +4,144 @@ All notable user-facing changes are listed here.
 Format inspired by [Keep a Changelog](https://keepachangelog.com/).  
 版本号与 `package.json` / `src-tauri/tauri.conf.json` 一致。
 
+## 0.4.8 — 2026-11-06
+
+### Changed
+- Diff marks: background only (no border); adjacent same-type blocks coalesce
+### Added
+- Agent: right-click user message → Edit & resend
+
+## 0.4.7 — 2026-11-06
+
+### Added
+- Agent: pending content proposals show red/green diff in the editor body (read-only preview)
+### Changed
+- Apply writes final content and clears body diff; Skip restores original
+
+## 0.4.6 — 2026-11-06
+
+### Added
+- Agent proposal cards: red/green paragraph diff vs current content before Apply
+### Changed
+- After Apply/Skip, proposal preview shows clean final text (diff colors go away)
+
+## 0.4.5 — 2026-11-06
+
+### Fixed
+- Agent Apply left struck-through old text: Strike stole `<del>` from DiffDel; markers now use `div`
+### Changed
+- Agent Apply writes final content (no lingering delete marks); wand still uses red/green + Accept
+
+## 0.4.4 — 2026-11-06
+
+### Added
+- Agent: optional DeepSeek web Search (off by default); toggle in Settings / Agent header
+
+## 0.4.3 — 2026-11-06
+
+### Added
+- AI content edits: paragraph-level green (add) / red (delete) marks; toolbar「接受改动」
+### Changed
+- Agent proposals: forbid nested ``` in next/content; sanitize fences to `<pre>`; per-proposal apply try/catch
+
+## 0.4.2 — 2026-11-06
+
+### Fixed
+- Agent: parse wango-proposals even when JSON strings contain nested ``` (Apply buttons were missing)
+
+## 0.4.1 — 2026-11-06
+
+### Fixed
+- Agent: wheel scroll stolen by editor behind overlay; stop auto-scroll after reply so Apply stays reachable
+### Changed
+- Agent: prompt requires wango-proposals whenever concrete node content is proposed
+
+## 0.4.0 — 2026-11-06
+
+### Added
+- AI (inspire / agent / wand): emit math-block / math-inline HTML; convert `$` / `$$` into formula nodes on apply
+
+## 0.3.60 — 2026-11-06
+
+### Fixed
+- Formula: export without editor chrome (border/background/label); empty inline field no longer collapses into a skinny tower
+
+## 0.3.59 — 2026-11-06
+
+### Changed
+- Formula: larger inline math chrome; hide MathLive menu/keyboard toggles (use palette + right-click)
+
+## 0.3.58 — 2026-11-06
+
+### Added
+- Formula: insert inline when the current paragraph already has text; empty paragraph still gets a block formula
+
+## 0.3.57 — 2026-11-06
+
+### Fixed
+- Formula: Chinese labels for MathLive Insert submenu (absolute value, calculus, complex numbers, etc.)
+
+## 0.3.56 — 2026-11-06
+
+### Fixed
+- Formula: restore MathLive right-click menu (was blocked earlier); locale follows app language (`zh-cn` / `en`)
+
+## 0.3.55 — 2026-11-06
+
+### Changed
+- Formula palette: **公式库** tab moved to the end; default tab is 常用 again
+
+## 0.3.54 — 2026-11-06
+
+### Added
+- Formula library filters by **学段** (小学 / 初中 / 高中 / 大学 / 专业领域), matching HuiTurn/Formula
+
+## 0.3.53 — 2026-11-06
+
+### Changed
+- Formula palette: **公式库** is the first tab (same row as 常用 / 希腊), opens on library by default
+
+## 0.3.52 — 2026-11-06
+
+### Added
+- Formula palette **Library** tab: search + category (math / physics / chemistry / …), one-click insert (~548 formulas from HuiTurn/Formula, MIT)
+
+## 0.3.51 — 2026-11-06
+
+### Fixed
+- Formula: clearing the last digit no longer removes the whole formula block (delete the block with × only)
+
+## 0.3.50 — 2026-11-06
+
+### Fixed
+- Formula: Backspace can delete symbols inside MathLive again (capture-phase `stopImmediatePropagation` was blocking MathLive)
+- Formula: clear `menuItems` only after the field is mounted so the English context menu actually goes away
+
+## 0.3.49 — 2026-11-06
+
+### Fixed
+- Formula: disable MathLive’s English context menu (use the symbol panel instead)
+- Formula: delete via the × button; Backspace/Delete on an empty formula removes the whole block
+
+## 0.3.48 — 2026-11-06
+
+### Fixed
+- Formula block: typing into a placeholder no longer deletes the whole block (ProseMirror was eating keys on the atom selection)
+- Keep caret inside MathLive slots; ignore MathLive DOM mutations
+
+## 0.3.47 — 2026-11-06
+
+### Fixed
+- Formula palette: clearer **根号 / 分数** captions; templates use placeholders so they **nest** (root then fraction)
+- MathLive soft keyboard stays off; structure comes from the floating panel
+
+## 0.3.46 — 2026-11-06
+
+### Added
+- **Formula block** (MathLive): block-level editable math with fillable slots (roots, fractions, …)
+- Draggable **symbol palette** (structure / Greek / operators / relations / more); click to insert into the focused formula
+- Word export embeds formula blocks as images (same path as code / callout)
+
 ## 0.3.45 — 2026-11-06
 
 ### Changed

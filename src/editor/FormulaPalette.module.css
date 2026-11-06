@@ -1,0 +1,229 @@
+.panel {
+  position: fixed;
+  z-index: 80;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(420px, calc(100vh - 24px));
+  display: flex;
+  flex-direction: column;
+  background: var(--wg-bg-elevated);
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: var(--wg-radius-md);
+  box-shadow: var(--wg-shadow), 0 12px 40px rgb(0 0 0 / 0.12);
+  overflow: hidden;
+  user-select: none;
+}
+
+.panel[data-mode="library"] {
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 24px));
+}
+
+.libToolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+
+.libFilterLabel {
+  font-size: 11px;
+  color: var(--wg-text-secondary);
+  padding: 2px 2px 0;
+}
+
+.libSearch {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: 8px;
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font-size: 13px;
+  outline: none;
+}
+
+.libSearch:focus {
+  border-color: color-mix(in srgb, var(--wg-accent) 45%, var(--wg-border));
+}
+
+.libList {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.libItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: 8px;
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.libItem:hover {
+  border-color: color-mix(in srgb, var(--wg-accent) 40%, var(--wg-border));
+  background: var(--wg-accent-soft);
+}
+
+.libName {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.libMeta {
+  font-size: 11px;
+  color: var(--wg-text-secondary);
+}
+
+.libText {
+  font-size: 12px;
+  color: var(--wg-text-secondary);
+  font-family: ui-monospace, Consolas, monospace;
+  word-break: break-all;
+}
+
+.libEmpty {
+  margin: 16px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--wg-text-secondary);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--wg-border-subtle);
+  cursor: grab;
+  background: color-mix(in srgb, var(--wg-bg) 70%, var(--wg-bg-elevated));
+}
+
+.head:active {
+  cursor: grabbing;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wg-text);
+}
+
+.close {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wg-text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--wg-accent-soft);
+  color: var(--wg-accent);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 10px 0;
+}
+
+.tab {
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--wg-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--wg-accent-soft);
+  color: var(--wg-accent);
+}
+
+.tab[data-active] {
+  border-color: color-mix(in srgb, var(--wg-accent) 35%, var(--wg-border));
+  background: var(--wg-accent-soft);
+  color: var(--wg-accent);
+  font-weight: 600;
+}
+
+.grid {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
+  padding: 10px;
+}
+
+.grid[data-captions] {
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+}
+
+.sym {
+  min-height: 40px;
+  padding: 4px;
+  border: 1px solid var(--wg-border-subtle);
+  border-radius: 8px;
+  background: var(--wg-bg);
+  color: var(--wg-text);
+  font-size: 16px;
+  line-height: 1.2;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.symGlyph {
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.symCaption {
+  font-size: 11px;
+  color: var(--wg-text-secondary);
+  line-height: 1.2;
+}
+
+.sym:hover {
+  border-color: color-mix(in srgb, var(--wg-accent) 40%, var(--wg-border));
+  background: var(--wg-accent-soft);
+  color: var(--wg-accent);
+}
+
+.sym:hover .symCaption {
+  color: var(--wg-accent);
+}
+
+.hint {
+  padding: 0 10px 10px;
+  font-size: 11px;
+  color: var(--wg-text-secondary);
+  line-height: 1.4;
+}

@@ -49,6 +49,11 @@ import glossaryDlg from "@/ui/glossary/GlossaryDialogs.module.css";
 import type { GlossaryEditorSelection } from "@/editor/EditorView";
 import type { RecentEntry } from "@/desktop/sessionPersist";
 import { InspireSessionApplier } from "@/ai/inspireApply";
+import { normalizeMathInMarkdown } from "@/ai/mathMarkdown";
+import {
+  annotateProposalBodyPreview,
+  findPendingBodyDiffProposal,
+} from "@/ai/proposalDiff";
 import {
   inspireFromPasteStream,
   inspireFromSentenceStream,
@@ -57,6 +62,7 @@ import {
 } from "@/ai/inspireStream";
 import type { InspireEvent } from "@/ai/inspireProtocol";
 import { ensureApiSettings, isApiConfigured } from "@/ai/openaiCompat";
+import { activeChatOf } from "@/desktop/agentPersist";
 import {
   emptyAppSettings,
   getAppSettings,
@@ -638,6 +644,19 @@ export function App() {
     if (!activeTab) return null;
     return getWorkspaceEditTarget(activeTab);
   }, [activeTab]);
+
+  const agentSession = useAgentStore((s) => s.session);
+  /** 待确认正文提案：编辑器里先显示红绿，应用后再写终稿 */
+  const bodyDiffPreview = useMemo(() => {
+    if (!activeTab || !editTarget) return null;
+    const chat = activeChatOf(agentSession);
+    const pending = findPendingBodyDiffProposal(chat?.messages ?? [], {
+      scope: editTarget.scope,
+      id: editTarget.id,
+    });
+    if (!pending) return null;
+    return annotateProposalBodyPreview(activeTab.project, pending);
+  }, [activeTab, editTarget, agentSession]);
 
   const selectedNode = useMemo(() => {
     if (!activeTab || !editTarget) return null;
@@ -1387,6 +1406,7 @@ export function App() {
                   inspireTabId &&
                   activeTabId === inspireTabId,
               )}
+              diffPreviewMarkdown={bodyDiffPreview}
               glossaryLinks={hostGlossaryLinks}
               glossaryColors={glossaryColors}
               glossaryTitles={glossaryTitles}
@@ -1488,41 +1508,60 @@ export function App() {
               }
               onOpenSettings={() => void openSettings()}
               onApplyProposal={(p) => {
-                if (p.op === "addChild") {
-                  if (p.target === "tree") {
-                    if (!p.parentId) return false;
-                    const id = addChildNodeWithContent(
+                try {
+                  if (p.op === "addChild") {
+                    const body = normalizeMathInMarkdown(p.content ?? "");
+                    if (p.target === "tree") {
+                      if (!p.parentId) return false;
+                      const id = addChildNodeWithContent(
+                        p.parentId,
+                        p.title,
+                        body,
+                      );
+                      return id ?? false;
+                    }
+                    const id = addGlossaryChildWithContent(
                       p.parentId,
                       p.title,
-                      p.content,
+                      body,
                     );
                     return id ?? false;
                   }
-                  const id = addGlossaryChildWithContent(
-                    p.parentId,
-                    p.title,
-                    p.content ?? "",
-                  );
-                  return id ?? false;
-                }
-                if (p.target === "tree") {
-                  if (!findNodeById(activeTab.project.tree, p.nodeId)) {
-                    return false;
+                  if (p.target === "tree") {
+                    const node = findNodeById(
+                      activeTab.project.tree,
+                      p.nodeId,
+                    );
+                    if (!node) return false;
+                    if (p.field === "title") setTitle(p.nodeId, p.next);
+                    else {
+                      // 红绿只在提案卡片预览；应用写入终稿，正文不留标记
+                      setContent(
+                        p.nodeId,
+                        normalizeMathInMarkdown(p.next),
+                      );
+                    }
+                    rescanGlossaryLinks();
+                    return p.nodeId;
                   }
-                  if (p.field === "title") setTitle(p.nodeId, p.next);
-                  else setContent(p.nodeId, p.next);
+                  const entry = findGlossaryById(
+                    activeTab.project.glossary,
+                    p.nodeId,
+                  );
+                  if (!entry || entry.kind === "ref") return false;
+                  if (p.field === "title") setGlossaryTitle(p.nodeId, p.next);
+                  else {
+                    setGlossaryContent(
+                      p.nodeId,
+                      normalizeMathInMarkdown(p.next),
+                    );
+                  }
                   rescanGlossaryLinks();
                   return p.nodeId;
+                } catch (err) {
+                  console.error("apply proposal failed", err);
+                  return false;
                 }
-                const entry = findGlossaryById(
-                  activeTab.project.glossary,
-                  p.nodeId,
-                );
-                if (!entry || entry.kind === "ref") return false;
-                if (p.field === "title") setGlossaryTitle(p.nodeId, p.next);
-                else setGlossaryContent(p.nodeId, p.next);
-                rescanGlossaryLinks();
-                return p.nodeId;
               }}
             />
           ) : undefined
@@ -1611,6 +1650,7 @@ export function App() {
                 treePaneCollapsed: settingsSnapshot.treePaneCollapsed,
                 agentPaneOpen: settingsSnapshot.agentPaneOpen,
                 agentPaneWidth: settingsSnapshot.agentPaneWidth,
+                webSearchEnabled: draft.webSearchEnabled,
                 hotkeys: draft.hotkeys,
               });
               setSettingsSnapshot(next);
