@@ -4,6 +4,73 @@ All notable user-facing changes are listed here.
 Format inspired by [Keep a Changelog](https://keepachangelog.com/).  
 版本号与 `package.json` / `src-tauri/tauri.conf.json` 一致。
 
+## 0.5.0 — 2026-11-07
+
+### Added
+- Editor toolbar: align left / center / right (paragraph & heading)
+
+## 0.4.19 — 2026-11-07
+
+### Fixed
+- Inline math empty hint: participates in layout when selected/focused so the full prompt fits on one line
+
+### Changed
+- Inline math: tight when idle; roomy when editing; empty idle is a small chip without the long hint
+
+## 0.4.18 — 2026-11-07
+
+### Changed
+- Inline math edit mode: larger padding/font; MathLive placeholders (frac slots) wider/taller
+
+## 0.4.17 — 2026-11-07
+
+### Changed
+- Inline math: shrink when idle; expand padding on node select; × only while the math field is focused
+
+## 0.4.16 — 2026-11-07
+
+### Fixed
+- Inline math delete (×): hidden on hover; only shown when the formula is selected
+
+## 0.4.15 — 2026-11-06
+
+### Fixed
+- Inline math: content width, adaptive height (fractions fully visible), vertical middle vs neighbors; paragraphs/export no longer clip
+
+## 0.4.14 — 2026-11-06
+
+### Fixed
+- Inline math font size bumped (~1.18em) so exponents stay readable without reintroducing wide gaps
+
+## 0.4.13 — 2026-11-06
+
+### Fixed
+- Inline math no longer leaves huge gaps (dropped fixed 10em/14em min-width; baseline align)
+- Proposal summary sits at the bottom of the card (after actions)
+
+## 0.4.12 — 2026-11-06
+
+### Fixed
+- Agent thinking stream no longer freezes the UI (rAF-batched deltas; App stops re-rendering editor on every token)
+
+## 0.4.11 — 2026-11-06
+
+### Fixed
+- Proposal summary moved below preview body
+- PDF/editor: GFM tables no longer flatten into one line; math nodes included in long-PDF render
+
+## 0.4.10 — 2026-11-06
+
+### Fixed
+- Settings → About showed stale `0.3.39`; now reads `package.json` version
+
+## 0.4.9 — 2026-11-06
+
+### Fixed
+- Bare TeX (`\frac` / `\times` without `$`) converted to math nodes on apply
+### Added
+- Agent proposal cards always show a short summary (`note` or client fallback)
+
 ## 0.4.8 — 2026-11-06
 
 ### Changed

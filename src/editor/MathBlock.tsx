@@ -42,6 +42,26 @@ function isInsideMathField(target: EventTarget | null): boolean {
   return Boolean(target.closest("math-field, [data-wg-math-host]"));
 }
 
+/** MathLive 空位（分式分子/分母等）默认偏窄，注入样式加宽加高 */
+function enlargeMathPlaceholders(mf: MathfieldElement): void {
+  const root = mf.shadowRoot;
+  if (!root || root.querySelector("style[data-wg-ph]")) return;
+  const style = document.createElement("style");
+  style.setAttribute("data-wg-ph", "1");
+  style.textContent = `
+    .ML__placeholder {
+      display: inline-block;
+      box-sizing: border-box;
+      min-width: 1.55em;
+      min-height: 1.35em;
+      padding-left: 1ex !important;
+      padding-right: 1ex !important;
+      vertical-align: middle;
+    }
+  `;
+  root.appendChild(style);
+}
+
 type MathVariant = "block" | "inline";
 
 function MathFieldView({
@@ -56,8 +76,10 @@ function MathFieldView({
   const mfRef = useRef<MathfieldElement | null>(null);
   const latex = String(node.attrs.latex ?? "");
   const [ready, setReady] = useState(false);
+  const [focused, setFocused] = useState(false);
   const latexFromMfRef = useRef(latex);
   const inline = variant === "inline";
+  const empty = !latex.trim();
 
   useEffect(() => {
     let cancelled = false;
@@ -77,7 +99,9 @@ function MathFieldView({
       mf.setAttribute("math-virtual-keyboard-policy", "manual");
       if (inline) {
         mf.style.width = "auto";
+        mf.style.minWidth = "0";
         mf.style.display = "inline-block";
+        mf.style.verticalAlign = "baseline";
       } else {
         mf.style.width = "100%";
       }
@@ -89,9 +113,11 @@ function MathFieldView({
       };
       onFocus = () => {
         if (mf) setActiveMathField(mf);
+        setFocused(true);
         hideMathVirtualKeyboard();
       };
       onBlur = () => {
+        setFocused(false);
         requestAnimationFrame(() => {
           if (mf && getActiveMathField() === mf) {
             const ae = document.activeElement;
@@ -114,6 +140,7 @@ function MathFieldView({
       mf.addEventListener("mousedown", onPointerDown);
       mf.addEventListener("keydown", onKeyDown);
       hostRef.current.appendChild(mf);
+      enlargeMathPlaceholders(mf);
       mfRef.current = mf;
       setReady(true);
     });
@@ -163,6 +190,8 @@ function MathFieldView({
       data-wg-math="1"
       data-wg-math-inline={inline ? "1" : undefined}
       data-latex={latex}
+      data-empty={inline && empty ? "1" : undefined}
+      data-focused={inline && focused ? "1" : undefined}
       data-selected={selected || undefined}
       onMouseDown={(e: ReactMouseEvent) => {
         const t = e.target as HTMLElement | null;

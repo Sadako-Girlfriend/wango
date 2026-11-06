@@ -80,7 +80,8 @@ export function LongPdfDocument({
           /* ignore */
         }
       }
-      await new Promise<void>((r) => setTimeout(r, 80));
+      // 等公式 MathLive 挂载（导出扩展含 math 节点）
+      await new Promise<void>((r) => setTimeout(r, 200));
       if (!cancelled) onReady(root);
     })();
 

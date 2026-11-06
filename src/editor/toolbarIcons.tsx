@@ -58,6 +58,30 @@ export function IconOrderedList() {
   );
 }
 
+export function IconAlignLeft() {
+  return (
+    <svg {...stroke}>
+      <path d="M4 6h16M4 12h10M4 18h14" />
+    </svg>
+  );
+}
+
+export function IconAlignCenter() {
+  return (
+    <svg {...stroke}>
+      <path d="M4 6h16M7 12h10M5 18h14" />
+    </svg>
+  );
+}
+
+export function IconAlignRight() {
+  return (
+    <svg {...stroke}>
+      <path d="M4 6h16M10 12h10M6 18h14" />
+    </svg>
+  );
+}
+
 export function IconLink() {
   return (
     <svg {...stroke}>

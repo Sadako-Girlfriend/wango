@@ -8,6 +8,7 @@ import { toPng } from "html-to-image";
 import type { NumberedTreeNode } from "@/domain";
 import { getAppSettings } from "@/desktop/appSettings";
 import { rewriteMarkdownForDisplay } from "@/desktop/mediaUrl";
+import { normalizeMathInMarkdown } from "@/ai/mathMarkdown";
 import { stripDiffAnnotations } from "@/editor/contentDiff";
 import {
   applyGlossaryMarksToMarkdown,
@@ -29,7 +30,9 @@ export function walkNumberedMarkdown(
   const level = Math.min(Math.max(depth, 1), 6);
   const hashes = "#".repeat(level);
   chunks.push(`${hashes} ${node.number} ${node.title}`);
-  const rawBody = stripDiffAnnotations(node.content).trim();
+  const rawBody = normalizeMathInMarkdown(
+    stripDiffAnnotations(node.content),
+  ).trim();
   if (rawBody) {
     const body = glossaryPaint
       ? applyGlossaryMarksToMarkdown(

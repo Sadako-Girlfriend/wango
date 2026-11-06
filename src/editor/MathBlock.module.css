@@ -1,4 +1,4 @@
-/* 导出：只留公式，去掉编辑态外壳 */
+/* 导出：只留公式，去掉编辑态外壳；高度/溢出保持可见，分式不被裁 */
 :global([data-wg-export]) .remove,
 :global([data-wg-export]) .removeInline,
 .wrap:global([data-wg-export]) .remove,
@@ -30,8 +30,13 @@
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  min-height: 0 !important;
   min-width: 0 !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+:global([data-wg-export]) .wrap {
+  min-height: 0 !important;
 }
 
 /* MathLive 自带键盘/菜单按钮：我们有符号面板 + 右键，行内更碍事 */
@@ -58,27 +63,98 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--wg-accent) 25%, transparent);
 }
 
-/* 行内：空态也要够宽，避免绝对定位提示折成细高塔 */
+/*
+ * 行内公式：
+ * - 失焦：紧贴内容
+ * - 选中/聚焦：大方留白，允许暂时撑高一行
+ * - 空态激活：提示参与布局，单行读全
+ */
 .wrapInline {
   position: relative;
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   vertical-align: middle;
-  margin: 0.15em 0.2em;
-  padding: 6px 26px 6px 12px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--wg-bg) 80%, transparent);
-  border: 1px solid var(--wg-border-subtle);
+  margin: 0 0.06em;
+  padding: 0.02em 0.04em;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
   box-sizing: border-box;
-  min-width: 14em;
-  min-height: 2.4em;
-  line-height: 1.5;
+  width: auto;
   max-width: 100%;
+  min-width: 0;
+  height: auto;
+  overflow: visible;
+  line-height: normal;
 }
 
-.wrapInline[data-selected] {
-  border-color: color-mix(in srgb, var(--wg-accent) 55%, var(--wg-border));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--wg-accent) 25%, transparent);
+/* 空态失焦：小芯片可点，不铺整句提示 */
+.wrapInline[data-empty] {
+  min-width: 2.4em;
+  min-height: 1.4em;
+  padding: 0.1em 0.35em;
+  background: color-mix(in srgb, var(--wg-bg) 80%, transparent);
+  border-color: var(--wg-border-subtle);
+}
+
+.wrapInline[data-empty]:not([data-selected]):not([data-focused]) .placeholderInline {
+  display: none;
+}
+
+/* 选中或聚焦：描边 + 编辑态大方留白 */
+.wrapInline[data-selected],
+.wrapInline[data-focused] {
+  background: color-mix(in srgb, var(--wg-bg) 88%, transparent);
+  border-color: color-mix(in srgb, var(--wg-accent) 45%, var(--wg-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--wg-accent) 20%, transparent);
+  min-width: 3.5em;
+  padding: 0.45em 1em 0.45em 0.6em;
+}
+
+.wrapInline[data-selected] .hostInline,
+.wrapInline[data-focused] .hostInline {
+  font-size: 1.42em;
+}
+
+/* 光标在框内：右侧再留叉号位 */
+.wrapInline[data-focused] {
+  padding-right: 1.6em;
+}
+
+/*
+ * 空态 + 选中/聚焦：提示参与布局撑宽（勿 absolute），单行不折；
+ * math-field 铺满点击，尺寸由提示决定
+ */
+.wrapInline[data-empty][data-selected],
+.wrapInline[data-empty][data-focused] {
+  min-width: 0;
+  min-height: 2.2em;
+  padding: 0.5em 1.1em 0.5em 0.7em;
+}
+
+.wrapInline[data-empty][data-focused] {
+  padding-right: 1.7em;
+}
+
+.wrapInline[data-empty][data-selected] .hostInline,
+.wrapInline[data-empty][data-focused] .hostInline {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  max-width: none;
+  font-size: 1.18em;
+}
+
+.wrapInline[data-empty][data-selected] .placeholderInline,
+.wrapInline[data-empty][data-focused] .placeholderInline {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.8;
 }
 
 .label {
@@ -98,16 +174,18 @@
 }
 
 .hostInline {
-  min-height: 1.6em;
-  font-size: 1.12em;
-  line-height: 1.5;
   display: inline-block;
   vertical-align: middle;
-  min-width: 10em;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  overflow: visible;
+  font-size: 1.18em;
+  line-height: normal;
 }
 
-.host :global(math-field),
-.hostInline :global(math-field) {
+.host :global(math-field) {
   display: block;
   width: 100%;
   min-height: 1.6em;
@@ -121,11 +199,21 @@
 
 .hostInline :global(math-field) {
   display: inline-block;
-  width: auto;
-  min-width: 10em;
-  min-height: 1.6em;
-  padding: 2px 6px;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  height: auto !important;
+  min-height: 0;
+  max-height: none;
+  padding: 0 1px;
+  border: none;
+  background: transparent;
+  outline: none;
   vertical-align: middle;
+  line-height: normal;
+  overflow: visible !important;
+  font-size: inherit;
+  color: var(--wg-text);
 }
 
 .host :global(math-field:focus),
@@ -146,7 +234,7 @@
 
 .placeholderInline {
   position: absolute;
-  left: 12px;
+  left: 0.4em;
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
@@ -182,20 +270,27 @@
 .removeInline {
   position: absolute;
   top: 50%;
-  right: 4px;
+  right: 2px;
   transform: translateY(-50%);
   z-index: 2;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   border: none;
   border-radius: 4px;
   background: transparent;
   color: var(--wg-text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
   cursor: pointer;
-  opacity: 0.65;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 叉号：仅光标在框内显示；点选但未聚焦 / 悬停都不显，防误触 */
+.wrapInline[data-focused] .removeInline {
+  opacity: 0.7;
+  pointer-events: auto;
 }
 
 .remove:hover,

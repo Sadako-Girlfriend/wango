@@ -23,10 +23,15 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
 import Strike from "@tiptap/extension-strike";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
 import Highlight from "@tiptap/extension-highlight";
+import TextAlign from "@tiptap/extension-text-align";
 import { Markdown } from "tiptap-markdown";
 import {
   rewriteMarkdownForDisplay,
@@ -69,6 +74,9 @@ import {
   stripPasteHtml,
 } from "./sanitizeMarkdown";
 import {
+  IconAlignCenter,
+  IconAlignLeft,
+  IconAlignRight,
   IconBold,
   IconBulletList,
   IconCallout,
@@ -678,6 +686,7 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
         }),
         // 段落行距：挂 paragraph attrs（须在 StarterKit paragraph 之后）
         LineHeight,
+        TextAlign.configure({ types: ["heading", "paragraph"] }),
         FancyCodeBlock,
         Underline,
         TextStyle,
@@ -688,6 +697,10 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
         Callout,
         MathBlock,
         MathInline,
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableHeader,
+        TableCell,
         DiffAdd,
         DiffDel,
         TrailingNode,
@@ -1370,6 +1383,42 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(
             data-active={editor.isActive("orderedList") || undefined}
           >
             <IconOrderedList />
+          </button>
+
+          <span className={styles.sep} />
+
+          <button
+            type="button"
+            className={styles.toolBtn}
+            title={tr("editor.alignLeft")}
+            aria-label={tr("editor.alignLeft")}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => withToolbarSelection().setTextAlign("left").run()}
+            data-active={editor.isActive({ textAlign: "left" }) || undefined}
+          >
+            <IconAlignLeft />
+          </button>
+          <button
+            type="button"
+            className={styles.toolBtn}
+            title={tr("editor.alignCenter")}
+            aria-label={tr("editor.alignCenter")}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => withToolbarSelection().setTextAlign("center").run()}
+            data-active={editor.isActive({ textAlign: "center" }) || undefined}
+          >
+            <IconAlignCenter />
+          </button>
+          <button
+            type="button"
+            className={styles.toolBtn}
+            title={tr("editor.alignRight")}
+            aria-label={tr("editor.alignRight")}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => withToolbarSelection().setTextAlign("right").run()}
+            data-active={editor.isActive({ textAlign: "right" }) || undefined}
+          >
+            <IconAlignRight />
           </button>
 
           <span className={styles.sep} />

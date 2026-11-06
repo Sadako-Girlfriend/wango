@@ -446,6 +446,9 @@
 
 .content :global(.tiptap p) {
   margin: 0;
+  /* 行内公式（分式等）可撑高行盒，禁止裁切 */
+  overflow: visible;
+  line-height: 1.75;
 }
 
 /* 块与块之间略分开；连续正文段落要紧凑，避免回车像空出一大截 */
@@ -553,4 +556,26 @@
 
 .content :global(.ProseMirror-selectednode) {
   outline: none;
+}
+
+.content :global(.tiptap table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+.content :global(.tiptap th),
+.content :global(.tiptap td) {
+  border: 1px solid var(--wg-border);
+  padding: 6px 10px;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.content :global(.tiptap th) {
+  background: var(--wg-bg-muted, #f1f5f9);
+  font-weight: 600;
+  text-align: left;
 }

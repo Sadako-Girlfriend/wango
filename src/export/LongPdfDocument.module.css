@@ -43,6 +43,13 @@
   font-size: 15px;
   line-height: 1.75;
   color: var(--wg-text);
+  overflow: visible;
+}
+
+.content :global(.tiptap p) {
+  margin: 0;
+  overflow: visible;
+  line-height: 1.75;
 }
 
 .content :global(.tiptap mark) {
@@ -136,4 +143,36 @@
 .content :global(img) {
   max-width: 100%;
   height: auto;
+}
+
+.content :global(.tiptap table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  table-layout: fixed;
+}
+
+.content :global(.tiptap th),
+.content :global(.tiptap td) {
+  border: 1px solid #d0d5dd;
+  padding: 6px 10px;
+  vertical-align: top;
+  word-break: break-word;
+  font-size: 14px;
+}
+
+.content :global(.tiptap th) {
+  background: #f2f4f7;
+  font-weight: 600;
+  text-align: left;
+}
+
+.content :global(.wg-math-block),
+.content :global(.wg-math-inline),
+.content :global(.react-renderer.node-mathBlock),
+.content :global(.react-renderer.node-mathInline) {
+  font-size: 15px;
+  height: auto;
+  overflow: visible;
+  vertical-align: middle;
 }

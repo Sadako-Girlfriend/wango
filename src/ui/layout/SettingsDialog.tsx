@@ -10,6 +10,7 @@ import { WANGO_PHILOSOPHY } from "@/content/wangoPhilosophy";
 import { mergeHotkeys, type HotkeyMap } from "@/hotkeys";
 import { setLocale, type Locale } from "@/i18n";
 import { useI18n } from "@/i18n/useI18n";
+import { APP_VERSION } from "@/appVersion";
 import { HotkeysSettingsPanel } from "./HotkeysSettingsPanel";
 import styles from "./SettingsDialog.module.css";
 
@@ -31,8 +32,6 @@ interface SettingsDialogProps {
   onSave: (draft: SettingsDraft) => void | Promise<void>;
   onCancel: () => void;
 }
-
-const APP_VERSION = "0.3.39";
 
 export function SettingsDialog({
   initial,

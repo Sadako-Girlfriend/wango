@@ -22,6 +22,7 @@ import {
 import {
   proposalDiffOps,
   resolveProposalNewText,
+  synthesizeProposalNote,
 } from "@/ai/proposalDiff";
 import { maybeAgentWebSearch } from "@/ai/deepseekTools";
 import { ensureApiSettings, isApiConfigured } from "@/ai/openaiCompat";
@@ -152,13 +153,20 @@ export function AgentPane({
     return t("agent.contextNode", { title: focus.title });
   }, [focus, t]);
 
-  // 仅在发送中跟到底；结束后不抢用户上滚去点「应用」
+  // 发送中跟到底；思考流按块节流，避免每 token 强制回流
+  const lastMsg = messages[messages.length - 1];
+  const scrollTick = sending
+    ? `${lastMsg?.id ?? ""}:${lastMsg?.content?.length ?? 0}:${Math.floor((lastMsg?.thinking?.length ?? 0) / 500)}`
+    : "";
   useEffect(() => {
-    if (!sending) return;
+    if (!sending || !scrollTick) return;
     const el = listRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [messages, sending, session.activeChatId]);
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [scrollTick, sending, session.activeChatId]);
 
   // 旧消息：正文里嵌套 ``` 曾导致提案解析失败；打开对话时补救一次
   useEffect(() => {
@@ -359,21 +367,33 @@ export function AgentPane({
           setSearchStatus(t("agent.webSearchHits", { n: "0" }));
         }
       }
+      // 流式合并到 rAF：思考 token 极密，逐条 setState 会卡死整窗
+      let thinkBuf = "";
+      let contentBuf = "";
+      let raf = 0;
+      const flushStream = () => {
+        raf = 0;
+        const st = useAgentStore.getState();
+        if (thinkBuf) {
+          st.appendAssistantThinking(assistantId, thinkBuf);
+          thinkBuf = "";
+        }
+        if (contentBuf) {
+          st.appendAssistantDelta(assistantId, contentBuf);
+          contentBuf = "";
+        }
+      };
       for await (const part of runAgentReply({
         system,
         history,
         signal: ac.signal,
       })) {
-        if (part.type === "reasoning") {
-          useAgentStore
-            .getState()
-            .appendAssistantThinking(assistantId, part.text);
-        } else {
-          useAgentStore
-            .getState()
-            .appendAssistantDelta(assistantId, part.text);
-        }
+        if (part.type === "reasoning") thinkBuf += part.text;
+        else contentBuf += part.text;
+        if (!raf) raf = requestAnimationFrame(flushStream);
       }
+      if (raf) cancelAnimationFrame(raf);
+      flushStream();
       const done = activeMessages().find((m) => m.id === assistantId);
       const raw = done?.content ?? "";
       const { display, proposals } = extractProposalsFromReply(raw);
@@ -588,9 +608,6 @@ export function AgentPane({
                               </span>
                             ) : null}
                           </div>
-                          {p.note ? (
-                            <div className={styles.proposalNote}>{p.note}</div>
-                          ) : null}
                           <div
                             className={styles.proposalPreview}
                             data-diff={st === "pending" ? "live" : "done"}
@@ -636,6 +653,9 @@ export function AgentPane({
                               </button>
                             </div>
                           ) : null}
+                          <div className={styles.proposalNote}>
+                            {synthesizeProposalNote(p, project)}
+                          </div>
                         </div>
                       );
                     })}
@@ -748,6 +768,8 @@ export function AgentPane({
   );
 }
 
+const THINKING_LIVE_CAP = 2800;
+
 function ThinkingBlock({
   text,
   streaming,
@@ -760,6 +782,7 @@ function ThinkingBlock({
   const { t } = useI18n();
   const [open, setOpen] = useState(true);
   const autoClosed = useRef(false);
+  const bodyRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     if (streaming) {
@@ -773,6 +796,19 @@ function ThinkingBlock({
     }
   }, [streaming, hasAnswer]);
 
+  // 流式只展示末尾，减轻 DOM；自动滚到底
+  const visible =
+    streaming && text.length > THINKING_LIVE_CAP
+      ? `…${text.slice(-THINKING_LIVE_CAP)}`
+      : text;
+
+  useEffect(() => {
+    if (!streaming || !open) return;
+    const el = bodyRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [visible, streaming, open]);
+
   return (
     <details
       className={styles.thinking}
@@ -785,7 +821,9 @@ function ThinkingBlock({
         </span>
         {streaming ? t("agent.thinkingLive") : t("agent.thinking")}
       </summary>
-      <pre className={styles.thinkingBody}>{text}</pre>
+      <pre ref={bodyRef} className={styles.thinkingBody}>
+        {visible}
+      </pre>
     </details>
   );
 }

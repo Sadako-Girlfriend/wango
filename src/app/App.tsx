@@ -645,18 +645,46 @@ export function App() {
     return getWorkspaceEditTarget(activeTab);
   }, [activeTab]);
 
-  const agentSession = useAgentStore((s) => s.session);
+  /**
+   * 只在「待确认正文提案」集合变化时更新；生成中（sending）固定键，
+   * 避免每个思考 token 拖着整页 App/编辑器重渲染导致卡死。
+   */
+  const bodyDiffKey = useAgentStore((s) => {
+    if (s.sending) return "sending";
+    const chat = activeChatOf(s.session);
+    const parts: string[] = [];
+    for (const m of chat.messages) {
+      if (m.role !== "assistant" || !m.proposals?.length) continue;
+      const st = m.proposalStatus ?? {};
+      for (const p of m.proposals) {
+        if ((st[p.id] ?? "pending") !== "pending") continue;
+        if (p.op !== "set" || p.field !== "content") continue;
+        parts.push(`${m.id}:${p.id}:${p.nodeId}:${String(p.next ?? "").length}`);
+      }
+    }
+    return parts.join("|") || "none";
+  });
+  /** 生成中沿用上一帧预览，避免 pending 红绿被刷掉 */
+  const bodyDiffHoldRef = useRef<string | null>(null);
   /** 待确认正文提案：编辑器里先显示红绿，应用后再写终稿 */
   const bodyDiffPreview = useMemo(() => {
     if (!activeTab || !editTarget) return null;
-    const chat = activeChatOf(agentSession);
-    const pending = findPendingBodyDiffProposal(chat?.messages ?? [], {
+    if (bodyDiffKey === "sending") return bodyDiffHoldRef.current;
+    if (bodyDiffKey === "none") {
+      bodyDiffHoldRef.current = null;
+      return null;
+    }
+    const chat = activeChatOf(useAgentStore.getState().session);
+    const pending = findPendingBodyDiffProposal(chat.messages, {
       scope: editTarget.scope,
       id: editTarget.id,
     });
-    if (!pending) return null;
-    return annotateProposalBodyPreview(activeTab.project, pending);
-  }, [activeTab, editTarget, agentSession]);
+    const next = pending
+      ? annotateProposalBodyPreview(activeTab.project, pending)
+      : null;
+    bodyDiffHoldRef.current = next;
+    return next;
+  }, [activeTab, editTarget, bodyDiffKey]);
 
   const selectedNode = useMemo(() => {
     if (!activeTab || !editTarget) return null;

@@ -4,6 +4,7 @@ import {
   findPendingBodyDiffProposal,
   proposalDiffOps,
   resolveProposalNewText,
+  synthesizeProposalNote,
 } from "./proposalDiff";
 import type { AgentProposal } from "./agentProposals";
 import type { AgentMessage, ProjectData, TreeNode } from "@/domain";
@@ -98,5 +99,43 @@ describe("annotateProposalBodyPreview", () => {
     expect(
       findPendingBodyDiffProposal(messages, { scope: "tree", id: "other" }),
     ).toBeNull();
+  });
+});
+
+describe("synthesizeProposalNote", () => {
+  it("优先用模型 note", () => {
+    const p = {
+      id: "1",
+      op: "addChild",
+      target: "tree",
+      parentId: "root",
+      title: "子",
+      note: "已写好「子」并补充例题",
+    } as AgentProposal;
+    expect(synthesizeProposalNote(p)).toBe("已写好「子」并补充例题");
+  });
+
+  it("新建无 note 时兜底", () => {
+    const p = {
+      id: "2",
+      op: "addChild",
+      target: "tree",
+      parentId: "root",
+      title: "教学反思",
+    } as AgentProposal;
+    expect(synthesizeProposalNote(p)).toBe("已写好「教学反思」");
+  });
+
+  it("改正文无 note 时带增删提示", () => {
+    const p = {
+      id: "3",
+      op: "set",
+      target: "tree",
+      nodeId: "root",
+      field: "content",
+      next: "旧段甲\n\n新段丙",
+    } as AgentProposal;
+    expect(synthesizeProposalNote(p, project)).toMatch(/改写了正文/);
+    expect(synthesizeProposalNote(p, project)).toMatch(/增|删/);
   });
 });

@@ -109,3 +109,40 @@ export function findPendingBodyDiffProposal(
   }
   return null;
 }
+
+/**
+ * 提案卡总结：优先用模型 note；缺失时兜底，保证卡片不空。
+ * project 可选：改正文时带轻量增删段提示。
+ */
+export function synthesizeProposalNote(
+  p: AgentProposal,
+  project?: ProjectData | null,
+): string {
+  const fromModel = typeof p.note === "string" ? p.note.trim() : "";
+  if (fromModel) return fromModel;
+
+  if (p.op === "addChild") {
+    const title = p.title.trim() || "新节点";
+    return p.target === "glossary"
+      ? `已写好词条「${title}」`
+      : `已写好「${title}」`;
+  }
+
+  if (p.field === "title") {
+    const next = String(p.next ?? "").trim() || "（空标题）";
+    return `改了标题 →「${next}」`;
+  }
+
+  if (project) {
+    const ops = proposalDiffOps(project, p);
+    const addN = ops.filter((o) => o.type === "add").length;
+    const delN = ops.filter((o) => o.type === "del").length;
+    if (addN || delN) {
+      const bits: string[] = [];
+      if (addN) bits.push(`增 ${addN} 段`);
+      if (delN) bits.push(`删 ${delN} 段`);
+      return `改写了正文（${bits.join("，")}）`;
+    }
+  }
+  return "改写了正文";
+}
